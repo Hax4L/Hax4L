@@ -53,7 +53,6 @@
       to { opacity:1; transform:translateY(0); }
     }
     
-    /* Logo Image */
     .logo-img {
       width:clamp(80px,15vw,120px);
       height:clamp(80px,15vw,120px);
@@ -217,7 +216,6 @@
   <canvas id="matrix"></canvas>
 
   <div class="container">
-    <!-- Logo Image -->
     <img src="https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg" 
          alt="HAX4L Logo" 
          class="logo-img">
@@ -239,8 +237,8 @@
     <button class="btn discord" onclick="window.open('https://discord.gg/hax4l','_blank')">💬 DISCORD</button>
 
     <div class="info">
-      ✅ <strong>Key nào cũng nhập được</strong><br>
-      ✅ <strong>Mỗi lần lấy → Key mới khác nhau 100%</strong><br>
+      ✅ <strong>1 Key = 1 Máy duy nhất</strong><br>
+      ✅ <strong>Máy đầu tiên nhập → Lock vĩnh viễn</strong><br>
       ✅ Thời gian: <strong>24 giờ</strong> từ lúc kích hoạt<br>
       📌 Script loadstring:<br>
       <code>loadstring(game:HttpGet("https://raw.githubusercontent.com/hax4l/Hax4L/main/script.lua"))()</code>
@@ -312,13 +310,13 @@ window.addEventListener('DOMContentLoaded', function() {
   
   if (verified === 'true') {
     currentKey = generateUniqueKey();
-    document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Copy key này và dán vào game!</small>`;
+    document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Key này CHỈ dùng được trên 1 máy duy nhất!</small>`;
     document.getElementById('s1').classList.add('completed');
     document.getElementById('s1').classList.remove('active');
     document.getElementById('s2').classList.add('completed');
     document.getElementById('s2').classList.remove('active');
     document.getElementById('s3').classList.add('completed', 'active');
-    showNotification("✅ Key mới đã được tạo! Copy ngay!");
+    showNotification("✅ Key mới! Máy đầu tiên nhập → Lock vĩnh viễn!");
     setTimeout(() => copyKey(), 2000);
   } else {
     document.getElementById('keyBox').innerHTML = "⚠️ VUI LÒNG VÀO TỪ GAME<br><small>Mở Roblox → Chạy script → Bấm 'LẤY KEY'</small>";
@@ -334,7 +332,7 @@ function copyKey() {
   }
   
   navigator.clipboard.writeText(currentKey).then(() => {
-    showNotification("✅ Đã copy key: " + currentKey);
+    showNotification("✅ Đã copy: " + currentKey + " (1 Key = 1 Máy)");
   }).catch(() => {
     const tempInput = document.createElement('input');
     tempInput.value = currentKey;
@@ -342,7 +340,7 @@ function copyKey() {
     tempInput.select();
     document.execCommand('copy');
     document.body.removeChild(tempInput);
-    showNotification("✅ Đã copy key: " + currentKey);
+    showNotification("✅ Đã copy: " + currentKey);
   });
 }
 
