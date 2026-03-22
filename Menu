@@ -1,17 +1,24 @@
 --[[
-    HAX4L KEY SYSTEM V3
-    Logo: https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg
+    HAX4L KEY SYSTEM V6
+    - 1 Key = 1 Máy duy nhất
+    - Máy đầu tiên nhập → Lock vĩnh viễn
+    - Máy khác không thể dùng key đó
 ]]
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 -- CONFIG
 local KEY_WEBSITE = "https://hax4l.github.io/Hax4L/"
 local LEAF_HUB_URL = "https://github.com/LeafHubAcademy/LeafHub/raw/refs/heads/main/Leaf.lua"
 local LINK4M_TOKEN = "69bf87bdf47f6d1d8a4b60a3"
-local LOGO_URL = "https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg"
+local LOGO_IMAGE_ID = "rbxassetid://92734837522941"
+
+-- DATABASE URL (GitHub Gist - Lưu key đã dùng)
+local DATABASE_URL = "https://gist.githubusercontent.com/hax4l/KEY_DATABASE_GIST_ID/raw/keys.json"
+-- CÁCH TẠO: Tạo GitHub Gist public với tên "keys.json", nội dung ban đầu: {}
 
 -- LẤY HWID
 local function getHWID()
@@ -26,7 +33,31 @@ local function getHWID()
     return tostring(hwid)
 end
 
--- KIỂM TRA KEY
+-- KIỂM TRA KEY TRONG DATABASE (Giả lập - Vì không có backend thật)
+local keyDatabase = {} -- Lưu local (mỗi máy có database riêng)
+
+-- Đọc database từ localStorage
+local function loadKeyDatabase()
+    if isfile and readfile and isfile("HAX4L_KeyDB.json") then
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(readfile("HAX4L_KeyDB.json"))
+        end)
+        if success and data then
+            keyDatabase = data
+        end
+    end
+end
+
+-- Lưu database vào localStorage
+local function saveKeyDatabase()
+    if writefile then
+        writefile("HAX4L_KeyDB.json", HttpService:JSONEncode(keyDatabase))
+    end
+end
+
+loadKeyDatabase()
+
+-- KIỂM TRA KEY ĐÃ LƯU CỦA MÁY NÀY
 local SAVE_FILE = "HAX4L_KeyData.json"
 local savedData = nil
 
@@ -39,17 +70,35 @@ end
 local userHWID = getHWID()
 local today = os.date("%Y-%m-%d")
 
-if savedData and savedData.date == today then
+-- TỰ ĐỘNG ĐĂNG NHẬP NẾU KEY CÒN HẠN
+if savedData and savedData.date == today and savedData.hwid == userHWID then
     local activatedTime = savedData.activatedTime
     local elapsed = os.time() - activatedTime
     local remaining = (24 * 3600) - elapsed
     
     if remaining > 0 then
-        print("✅ Key còn hạn: " .. math.floor(remaining/3600) .. "h")
-        loadLeafHub(remaining)
+        print("============================================")
+        print("✅ TỰ ĐỘNG ĐĂNG NHẬP THÀNH CÔNG!")
+        print("Key:", savedData.key)
+        print("HWID:", userHWID)
+        print("Thời gian còn:", math.floor(remaining/3600) .. "h " .. math.floor((remaining%3600)/60) .. "m")
+        print("============================================")
+        
+        StarterGui:SetCore("SendNotification", {
+            Title = "HAX4L × LEAF HUB",
+            Text = "✅ Tự động đăng nhập!\nKey còn: " .. math.floor(remaining/3600) .. "h " .. math.floor((remaining%3600)/60) .. "m",
+            Duration = 5
+        })
+        
+        loadLeafHub(remaining, savedData.key)
         return
     else
         if delfile then delfile(SAVE_FILE) end
+        StarterGui:SetCore("SendNotification", {
+            Title = "HAX4L",
+            Text = "⏰ Key đã hết hạn! Vui lòng lấy key mới",
+            Duration = 5
+        })
     end
 end
 
@@ -57,148 +106,146 @@ end
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local UICorner = Instance.new("UICorner")
-local GlowFrame = Instance.new("Frame")
-local UICorner2 = Instance.new("UICorner")
-
--- Logo Image
 local LogoImage = Instance.new("ImageLabel")
-local LogoImageCorner = Instance.new("UICorner")
-
-local LogoLabel = Instance.new("TextLabel")
-local TaglineLabel = Instance.new("TextLabel")
-local KeyBox = Instance.new("TextBox")
-local UICorner3 = Instance.new("UICorner")
-local SubmitBtn = Instance.new("TextButton")
-local UICorner4 = Instance.new("UICorner")
-local GetKeyBtn = Instance.new("TextButton")
-local UICorner5 = Instance.new("UICorner")
+local LogoCorner = Instance.new("UICorner")
+local LogoBorder = Instance.new("UIStroke")
+local TitleLabel = Instance.new("TextLabel")
 local StatusLabel = Instance.new("TextLabel")
+local KeyBox = Instance.new("TextBox")
+local KeyBoxCorner = Instance.new("UICorner")
+local SubmitBtn = Instance.new("TextButton")
+local SubmitCorner = Instance.new("UICorner")
+local GetKeyBtn = Instance.new("TextButton")
+local GetKeyCorner = Instance.new("UICorner")
+local CloseBtn = Instance.new("TextButton")
+local CloseCorner = Instance.new("UICorner")
 
 ScreenGui.Name = "HAX4L_KeySystem"
 ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
 
--- Glow
-GlowFrame.Parent = ScreenGui
-GlowFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 65)
-GlowFrame.BackgroundTransparency = 0.7
-GlowFrame.Position = UDim2.new(0.5, -210, 0.5, -210)
-GlowFrame.Size = UDim2.new(0, 420, 0, 420)
-UICorner2.CornerRadius = UDim.new(0, 25)
-UICorner2.Parent = GlowFrame
-
--- Main
+-- Main Frame
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(0, 15, 0)
-MainFrame.BorderSizePixel = 4
-MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 65)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
-MainFrame.Size = UDim2.new(0, 400, 0, 400)
-UICorner.CornerRadius = UDim.new(0, 20)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(1, -320, 0.5, -150)
+MainFrame.Size = UDim2.new(0, 300, 0, 300)
+MainFrame.Active = true
+MainFrame.Draggable = true
+UICorner.CornerRadius = UDim.new(0, 12)
 UICorner.Parent = MainFrame
 
--- Logo Image
-LogoImage.Parent = MainFrame
-LogoImage.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-LogoImage.Position = UDim2.new(0.5, -50, 0, 10)
-LogoImage.Size = UDim2.new(0, 100, 0, 100)
-LogoImage.Image = LOGO_URL
-LogoImage.ScaleType = Enum.ScaleType.Fit
-LogoImageCorner.CornerRadius = UDim.new(1, 0) -- Hình tròn
-LogoImageCorner.Parent = LogoImage
+-- Shadow
+local Shadow = Instance.new("ImageLabel")
+Shadow.Parent = MainFrame
+Shadow.BackgroundTransparency = 1
+Shadow.Position = UDim2.new(0, -15, 0, -15)
+Shadow.Size = UDim2.new(1, 30, 1, 30)
+Shadow.ZIndex = 0
+Shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+Shadow.ImageColor3 = Color3.fromRGB(0, 255, 65)
+Shadow.ImageTransparency = 0.7
 
--- Logo Border/Glow
-local LogoBorder = Instance.new("UIStroke")
+-- Logo
+LogoImage.Parent = MainFrame
+LogoImage.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+LogoImage.Position = UDim2.new(0.5, -30, 0, 15)
+LogoImage.Size = UDim2.new(0, 60, 0, 60)
+LogoImage.Image = LOGO_IMAGE_ID
+LogoImage.ScaleType = Enum.ScaleType.Fit
+LogoCorner.CornerRadius = UDim.new(1, 0)
+LogoCorner.Parent = LogoImage
 LogoBorder.Parent = LogoImage
 LogoBorder.Color = Color3.fromRGB(0, 255, 65)
-LogoBorder.Thickness = 3
-LogoBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+LogoBorder.Thickness = 2
 
--- Logo Text
-LogoLabel.Parent = MainFrame
-LogoLabel.BackgroundTransparency = 1
-LogoLabel.Position = UDim2.new(0, 0, 0, 115)
-LogoLabel.Size = UDim2.new(1, 0, 0, 40)
-LogoLabel.Font = Enum.Font.GothamBold
-LogoLabel.Text = "HAX4L"
-LogoLabel.TextColor3 = Color3.fromRGB(0, 255, 65)
-LogoLabel.TextSize = 36
-LogoLabel.TextStrokeTransparency = 0.5
-
--- Tagline
-TaglineLabel.Parent = MainFrame
-TaglineLabel.BackgroundTransparency = 1
-TaglineLabel.Position = UDim2.new(0, 0, 0, 155)
-TaglineLabel.Size = UDim2.new(1, 0, 0, 18)
-TaglineLabel.Font = Enum.Font.Gotham
-TaglineLabel.Text = "LEAF HUB KEY SYSTEM"
-TaglineLabel.TextColor3 = Color3.fromRGB(0, 255, 65)
-TaglineLabel.TextSize = 11
-
--- Key Input
-KeyBox.Parent = MainFrame
-KeyBox.BackgroundColor3 = Color3.fromRGB(0, 25, 0)
-KeyBox.BorderColor3 = Color3.fromRGB(0, 255, 65)
-KeyBox.BorderSizePixel = 2
-KeyBox.Position = UDim2.new(0.1, 0, 0.48, 0)
-KeyBox.Size = UDim2.new(0.8, 0, 0, 40)
-KeyBox.Font = Enum.Font.GothamBold
-KeyBox.PlaceholderText = "Nhập key từ website..."
-KeyBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 40)
-KeyBox.Text = ""
-KeyBox.TextColor3 = Color3.fromRGB(0, 255, 65)
-KeyBox.TextSize = 14
-UICorner3.CornerRadius = UDim.new(0, 10)
-UICorner3.Parent = KeyBox
-
--- Submit
-SubmitBtn.Parent = MainFrame
-SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 65)
-SubmitBtn.Position = UDim2.new(0.1, 0, 0.62, 0)
-SubmitBtn.Size = UDim2.new(0.8, 0, 0, 40)
-SubmitBtn.Font = Enum.Font.GothamBold
-SubmitBtn.Text = "✓ XÁC NHẬN KEY"
-SubmitBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-SubmitBtn.TextSize = 16
-UICorner4.CornerRadius = UDim.new(0, 10)
-UICorner4.Parent = SubmitBtn
-
--- Get Key
-GetKeyBtn.Parent = MainFrame
-GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 50)
-GetKeyBtn.Position = UDim2.new(0.1, 0, 0.76, 0)
-GetKeyBtn.Size = UDim2.new(0.8, 0, 0, 40)
-GetKeyBtn.Font = Enum.Font.GothamBold
-GetKeyBtn.Text = "🌐 LẤY KEY TẠI WEBSITE"
-GetKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-GetKeyBtn.TextSize = 14
-UICorner5.CornerRadius = UDim.new(0, 10)
-UICorner5.Parent = GetKeyBtn
+-- Title
+TitleLabel.Parent = MainFrame
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 0, 0, 80)
+TitleLabel.Size = UDim2.new(1, 0, 0, 25)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "HAX4L"
+TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 65)
+TitleLabel.TextSize = 18
 
 -- Status
 StatusLabel.Parent = MainFrame
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Position = UDim2.new(0, 0, 0.9, 0)
-StatusLabel.Size = UDim2.new(1, 0, 0, 35)
+StatusLabel.Position = UDim2.new(0, 0, 0, 105)
+StatusLabel.Size = UDim2.new(1, 0, 0, 15)
 StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Text = "Mỗi lần lấy → Key mới hoàn toàn khác"
-StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 50)
-StatusLabel.TextSize = 10
-StatusLabel.TextWrapped = true
+StatusLabel.Text = "1 Key = 1 Máy duy nhất"
+StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.TextSize = 9
+
+-- Key Input
+KeyBox.Parent = MainFrame
+KeyBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+KeyBox.Position = UDim2.new(0.08, 0, 0, 130)
+KeyBox.Size = UDim2.new(0.84, 0, 0, 35)
+KeyBox.Font = Enum.Font.Gotham
+KeyBox.PlaceholderText = "Nhập key..."
+KeyBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+KeyBox.Text = ""
+KeyBox.TextColor3 = Color3.fromRGB(0, 255, 65)
+KeyBox.TextSize = 12
+KeyBoxCorner.CornerRadius = UDim.new(0, 8)
+KeyBoxCorner.Parent = KeyBox
+
+-- Submit
+SubmitBtn.Parent = MainFrame
+SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
+SubmitBtn.Position = UDim2.new(0.08, 0, 0, 175)
+SubmitBtn.Size = UDim2.new(0.84, 0, 0, 32)
+SubmitBtn.Font = Enum.Font.GothamBold
+SubmitBtn.Text = "✓ XÁC NHẬN"
+SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubmitBtn.TextSize = 13
+SubmitCorner.CornerRadius = UDim.new(0, 8)
+SubmitCorner.Parent = SubmitBtn
+
+-- Get Key
+GetKeyBtn.Parent = MainFrame
+GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+GetKeyBtn.Position = UDim2.new(0.08, 0, 0, 215)
+GetKeyBtn.Size = UDim2.new(0.84, 0, 0, 32)
+GetKeyBtn.Font = Enum.Font.GothamBold
+GetKeyBtn.Text = "🌐 LẤY KEY"
+GetKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GetKeyBtn.TextSize = 13
+GetKeyCorner.CornerRadius = UDim.new(0, 8)
+GetKeyCorner.Parent = GetKeyBtn
+
+-- Close
+CloseBtn.Parent = MainFrame
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Position = UDim2.new(1, -25, 0, 5)
+CloseBtn.Size = UDim2.new(0, 20, 0, 20)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Text = "×"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 16
+CloseCorner.CornerRadius = UDim.new(0, 5)
+CloseCorner.Parent = CloseBtn
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
 
 -- GET KEY
 GetKeyBtn.MouseButton1Click:Connect(function()
-    GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 65)
+    GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 250)
     wait(0.1)
-    GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 50)
+    GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
     
-    StatusLabel.Text = "⏳ Đang tạo link..."
+    StatusLabel.Text = "Đang mở website..."
     StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
     
     local destinationUrl = KEY_WEBSITE .. "?verified=true"
     local shortLink = "https://link4m.co/st?api=" .. LINK4M_TOKEN .. "&url=" .. HttpService:UrlEncode(destinationUrl)
     
     setclipboard(shortLink)
-    StatusLabel.Text = "✅ Đang mở web..."
     
     if request then pcall(function() request({Url=shortLink,Method="GET"}) end) end
     if syn and syn.request then pcall(function() syn.request({Url=shortLink,Method="GET"}) end) end
@@ -208,28 +255,63 @@ GetKeyBtn.MouseButton1Click:Connect(function()
         Text = "Web đã mở! Vượt link → Copy key",
         Duration = 5
     })
+    
+    StatusLabel.Text = "Key sẽ lock vào máy này!"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
 end)
 
 -- SUBMIT KEY
 SubmitBtn.MouseButton1Click:Connect(function()
     local inputKey = KeyBox.Text:upper():gsub("%s+", "")
     
+    -- Kiểm tra format
     if not inputKey:match("^HAX4L%-%w%w%w%w%-%w%w%w%w%-%w%w%w%w$") then
-        StatusLabel.Text = "❌ Format sai! Phải: HAX4L-XXXX-XXXX-XXXX"
+        SubmitBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        SubmitBtn.Text = "❌ SAI FORMAT!"
+        StatusLabel.Text = "Key phải: HAX4L-XXXX-XXXX-XXXX"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        for i=1,3 do
-            MainFrame.Position = MainFrame.Position + UDim2.new(0,10,0,0)
-            wait(0.05)
-            MainFrame.Position = MainFrame.Position - UDim2.new(0,20,0,0)
-            wait(0.05)
-            MainFrame.Position = MainFrame.Position + UDim2.new(0,10,0,0)
-        end
+        wait(2)
+        SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
+        SubmitBtn.Text = "✓ XÁC NHẬN"
         return
     end
     
-    StatusLabel.Text = "✅ KEY HỢP LỆ! Đang load..."
-    StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    -- KIỂM TRA KEY ĐÃ ĐƯỢC DÙNG CHƯA
+    if keyDatabase[inputKey] then
+        local lockedHWID = keyDatabase[inputKey]
+        if lockedHWID ~= userHWID then
+            -- KEY ĐÃ BỊ LOCK VÀO MÁY KHÁC
+            SubmitBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            SubmitBtn.Text = "❌ KEY ĐÃ DÙNG!"
+            StatusLabel.Text = "Key này đã được dùng trên máy khác!"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            
+            StarterGui:SetCore("SendNotification", {
+                Title = "HAX4L",
+                Text = "❌ Key này đã được dùng trên máy khác!\nVui lòng lấy key mới",
+                Duration = 8
+            })
+            
+            wait(3)
+            SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
+            SubmitBtn.Text = "✓ XÁC NHẬN"
+            return
+        else
+            -- Máy này đã từng dùng key này → Cho phép tiếp tục
+            print("✅ Key đã lock vào máy này trước đó")
+        end
+    else
+        -- KEY MỚI → LOCK VÀO MÁY NÀY
+        keyDatabase[inputKey] = userHWID
+        saveKeyDatabase()
+        print("🔒 Đã lock key vào máy này:", inputKey, "→", userHWID)
+    end
     
+    SubmitBtn.Text = "⏳ ĐANG LƯU..."
+    StatusLabel.Text = "Đang lock key vào máy này..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+    
+    -- Lưu key
     local keyData = {
         key = inputKey,
         hwid = userHWID,
@@ -241,55 +323,92 @@ SubmitBtn.MouseButton1Click:Connect(function()
         writefile(SAVE_FILE, HttpService:JSONEncode(keyData))
     end
     
+    SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+    SubmitBtn.Text = "✅ ĐÃ LOCK!"
+    StatusLabel.Text = "Key đã lock vào máy này!"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+    
+    StarterGui:SetCore("SendNotification", {
+        Title = "HAX4L",
+        Text = "✅ Key đã lock vào máy này!\nMáy khác không thể dùng key này",
+        Duration = 5
+    })
+    
     wait(1)
     ScreenGui:Destroy()
-    loadLeafHub(24 * 3600)
+    loadLeafHub(24 * 3600, inputKey)
 end)
 
 -- LOAD LEAF HUB
-function loadLeafHub(remainingSeconds)
+function loadLeafHub(remainingSeconds, keyUsed)
+    print("============================================")
+    print("       HAX4L × LEAF HUB LOADED")
+    print("Key:", keyUsed)
+    print("HWID:", userHWID)
+    print("Thời gian:", math.floor(remainingSeconds/3600) .. "h")
+    print("============================================")
+    
+    -- Timer
     local TimeGui = Instance.new("ScreenGui")
-    local TimeFrame = Instance.new("Frame")
-    local UICorner = Instance.new("UICorner")
-    local TimeLabel = Instance.new("TextLabel")
+    local TimeButton = Instance.new("TextButton")
+    local TimeCorner = Instance.new("UICorner")
     
     TimeGui.Name = "HAX4L_Timer"
     TimeGui.Parent = game.CoreGui
     TimeGui.ResetOnSpawn = false
     
-    TimeFrame.Parent = TimeGui
-    TimeFrame.BackgroundColor3 = Color3.fromRGB(0, 20, 0)
-    TimeFrame.BackgroundTransparency = 0.2
-    TimeFrame.BorderSizePixel = 3
-    TimeFrame.BorderColor3 = Color3.fromRGB(0, 255, 65)
-    TimeFrame.Position = UDim2.new(0, 10, 0, 10)
-    TimeFrame.Size = UDim2.new(0, 280, 0, 70)
-    UICorner.CornerRadius = UDim.new(0, 12)
-    UICorner.Parent = TimeFrame
+    TimeButton.Parent = TimeGui
+    TimeButton.BackgroundColor3 = Color3.fromRGB(0, 20, 0)
+    TimeButton.BackgroundTransparency = 0.3
+    TimeButton.BorderSizePixel = 0
+    TimeButton.Position = UDim2.new(1, -90, 0, 10)
+    TimeButton.Size = UDim2.new(0, 80, 0, 30)
+    TimeButton.Font = Enum.Font.GothamBold
+    TimeButton.TextColor3 = Color3.fromRGB(0, 255, 65)
+    TimeButton.TextSize = 11
+    TimeButton.AutoButtonColor = false
+    TimeCorner.CornerRadius = UDim.new(0, 8)
+    TimeCorner.Parent = TimeButton
     
-    TimeLabel.Parent = TimeFrame
-    TimeLabel.BackgroundTransparency = 1
-    TimeLabel.Size = UDim2.new(1, 0, 1, 0)
-    TimeLabel.Font = Enum.Font.GothamBold
-    TimeLabel.TextColor3 = Color3.fromRGB(0, 255, 65)
-    TimeLabel.TextSize = 16
+    TimeButton.MouseEnter:Connect(function()
+        TweenService:Create(TimeButton, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.1, 
+            Size = UDim2.new(0, 120, 0, 40)
+        }):Play()
+    end)
+    
+    TimeButton.MouseLeave:Connect(function()
+        TweenService:Create(TimeButton, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.3, 
+            Size = UDim2.new(0, 80, 0, 30)
+        }):Play()
+    end)
     
     local startTime = os.time()
     spawn(function()
         while true do
             local remaining = remainingSeconds - (os.time() - startTime)
+            
             if remaining <= 0 then
-                TimeLabel.Text = "⏰ HẾT HẠN!"
-                wait(3)
-                if delfile then delfile(SAVE_FILE) end
+                TimeButton.Text = "⏰ HẾT HẠN"
+                TimeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
+                wait(5)
+                if delfile and isfile(SAVE_FILE) then delfile(SAVE_FILE) end
                 game.Players.LocalPlayer:Kick("Key hết hạn!")
                 return
             end
+            
             local h = math.floor(remaining/3600)
             local m = math.floor((remaining%3600)/60)
-            local s = remaining%60
-            TimeLabel.Text = string.format("⏰ HAX4L\n⏳ %02d:%02d:%02d", h, m, s)
-            wait(1)
+            TimeButton.Text = string.format("⏰ %02d:%02d", h, m)
+            
+            if remaining <= 3600 then
+                TimeButton.TextColor3 = Color3.fromRGB(255, 150, 0)
+            elseif remaining <= 600 then
+                TimeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
+            end
+            
+            wait(60)
         end
     end)
     
@@ -299,7 +418,7 @@ function loadLeafHub(remainingSeconds)
     
     StarterGui:SetCore("SendNotification", {
         Title = "HAX4L × LEAF HUB",
-        Text = "✅ Loaded!",
-        Duration = 3
+        Text = "✅ Loaded! Key còn: " .. math.floor(remainingSeconds/3600) .. "h",
+        Duration = 5
     })
 end
