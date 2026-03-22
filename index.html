@@ -134,6 +134,16 @@
       to { box-shadow:0 0 50px #0f0,0 0 70px #0f0,inset 0 0 25px rgba(0,255,65,0.3); }
     }
     
+    .key-box.expired {
+      border-color:#f00;
+      animation:glowRed 2.5s infinite alternate;
+    }
+    
+    @keyframes glowRed {
+      from { box-shadow:0 0 20px #f00,inset 0 0 10px rgba(255,0,0,0.2); }
+      to { box-shadow:0 0 50px #f00,0 0 70px #f00,inset 0 0 25px rgba(255,0,0,0.3); }
+    }
+    
     .key-box small {
       font-size:clamp(0.7rem,1.8vw,0.95rem);
       margin-top:10px;
@@ -160,6 +170,7 @@
     
     .btn:hover { background:#00d900; transform:scale(1.05) translateY(-2px); box-shadow:0 6px 20px rgba(0,255,65,0.5); }
     .btn:active { transform:scale(0.98); }
+    .btn:disabled { background:#444; cursor:not-allowed; opacity:0.6; }
     .btn.discord { background:#5865F2; color:#fff; }
     .btn.discord:hover { background:#4752C4; }
     
@@ -180,6 +191,24 @@
       display:inline-block;
       margin:6px 0;
       border:1px solid rgba(0,255,65,0.3);
+    }
+    
+    .timer {
+      font-size:clamp(0.95rem,2.8vw,1.3rem);
+      color:#00ff00;
+      margin-top:clamp(12px,2.5vw,18px);
+      font-weight:bold;
+      text-shadow:0 0 8px #00ff00;
+    }
+    
+    .timer.warning { color:#ff9900; text-shadow:0 0 8px #ff9900; }
+    .timer.danger { color:#ff0000; text-shadow:0 0 8px #ff0000; }
+    
+    .hwid-info {
+      font-size:clamp(0.7rem,1.8vw,0.85rem);
+      margin-top:10px;
+      opacity:0.7;
+      font-style:italic;
     }
     
     .notification {
@@ -230,18 +259,23 @@
     </div>
 
     <div class="key-box" id="keyBox">
-      ĐANG TẢI KEY...
+      ⚠️ VUI LÒNG VÀO TỪ GAME VÀ VƯỢT LINK
     </div>
 
-    <button class="btn" id="copyBtn" onclick="copyKey()">📋 COPY KEY</button>
+    <button class="btn" id="copyBtn" onclick="copyKey()" style="display:none;">📋 COPY KEY</button>
     <button class="btn discord" onclick="window.open('https://discord.gg/hax4l','_blank')">💬 DISCORD</button>
 
     <div class="info">
-      ✅ <strong>1 Key = 1 Máy duy nhất</strong><br>
-      ✅ <strong>Máy đầu tiên nhập → Lock vĩnh viễn</strong><br>
-      ✅ Thời gian: <strong>24 giờ</strong> từ lúc kích hoạt<br>
+      ✅ <strong>Mỗi máy có key riêng - Không trùng lặp</strong><br>
+      ✅ <strong>Key tồn tại 24 giờ kể từ lúc vượt link</strong><br>
+      ✅ <strong>Reload trang vẫn giữ nguyên key</strong><br>
       📌 Script loadstring:<br>
-      <code>loadstring(game:HttpGet("https://raw.githubusercontent.com/hax4l/Hax4L/main/script.lua"))()</code>
+      <code>loadstring(game:HttpGet("https://raw.githubusercontent.com/yourusername/Hax4L/main/script.lua"))()</code>
+      <div class="hwid-info" id="hwidInfo"></div>
+    </div>
+    
+    <div class="timer" id="timer" style="display:none;">
+      ⏰ Key còn: <span id="countdown">--:--:--</span>
     </div>
   </div>
 
@@ -249,8 +283,11 @@
 
 <script>
 let currentKey = "";
+let keyExpireTime = 0;
+let userHWID = "";
+let countdownInterval = null;
 
-// Matrix Rain
+// Matrix Rain Effect
 const canvas = document.getElementById('matrix');
 const ctx = canvas.getContext('2d');
 function resizeCanvas() {
@@ -259,15 +296,18 @@ function resizeCanvas() {
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+
 const letters = 'HAX4L0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const fontSize = Math.max(10, Math.min(14, window.innerWidth / 80));
 const columns = Math.floor(canvas.width / fontSize);
 const drops = Array(columns).fill(1);
+
 function drawMatrix() {
   ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#0f0';
   ctx.font = fontSize + 'px monospace';
+  
   for (let i = 0; i < drops.length; i++) {
     const text = letters[Math.floor(Math.random() * letters.length)];
     ctx.fillText(text, i * fontSize, drops[i] * fontSize);
@@ -277,47 +317,177 @@ function drawMatrix() {
 }
 setInterval(drawMatrix, 35);
 
-// Generate Unique Key
-function generateUniqueKey() {
+// Generate Key từ HWID (mỗi máy 1 key duy nhất)
+function generateKeyFromHWID(hwid) {
+  const today = new Date().toISOString().split('T')[0];
+  const combined = hwid + today;
+  
+  let hash = 0;
+  for(let i = 0; i < combined.length; i++) {
+    hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+    hash = hash & hash;
+  }
+  
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const timestamp = Date.now().toString(36).toUpperCase();
   let key = "HAX4L-";
   
   let part1 = "";
   for(let i = 0; i < 4; i++) {
-    const idx = (timestamp.charCodeAt(i % timestamp.length) + i) % chars.length;
+    const idx = Math.abs((hash + i * 7) % chars.length);
     part1 += chars[idx];
   }
   
   let part2 = "";
   for(let i = 0; i < 4; i++) {
-    part2 += chars[Math.floor(Math.random() * chars.length)];
+    const idx = Math.abs((hash + i * 13) % chars.length);
+    part2 += chars[idx];
   }
   
   let part3 = "";
+  const timestamp = Date.now();
   for(let i = 0; i < 4; i++) {
-    part3 += chars[Math.floor(Math.random() * chars.length)];
+    const idx = Math.abs(((hash + timestamp) + i * 17) % chars.length);
+    part3 += chars[idx];
   }
   
   key += part1 + "-" + part2 + "-" + part3;
   return key;
 }
 
+// Format time
+function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+}
+
+// Update countdown
+function updateCountdown() {
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = keyExpireTime - now;
+  
+  if (remaining <= 0) {
+    clearInterval(countdownInterval);
+    
+    localStorage.removeItem('HAX4L_CurrentKey_' + userHWID);
+    localStorage.removeItem('HAX4L_ExpireTime_' + userHWID);
+    
+    document.getElementById('keyBox').innerHTML = "⏰ KEY ĐÃ HẾT HẠN (24H)<br><small>Vui lòng vượt link mới từ game để lấy key mới</small>";
+    document.getElementById('keyBox').classList.add('expired');
+    document.getElementById('copyBtn').style.display = 'none';
+    document.getElementById('timer').style.display = 'none';
+    
+    document.getElementById('s1').classList.remove('completed');
+    document.getElementById('s1').classList.add('active');
+    document.getElementById('s2').classList.remove('completed');
+    document.getElementById('s3').classList.remove('completed','active');
+    
+    showNotification("⏰ Key đã hết hạn! Vui lòng vượt link mới");
+    
+    currentKey = "";
+    keyExpireTime = 0;
+    return;
+  }
+  
+  document.getElementById('countdown').textContent = formatTime(remaining);
+  
+  const timerElement = document.getElementById('timer');
+  timerElement.classList.remove('warning', 'danger');
+  
+  if (remaining <= 3600) timerElement.classList.add('warning');
+  if (remaining <= 600) {
+    timerElement.classList.remove('warning');
+    timerElement.classList.add('danger');
+  }
+}
+
+// Display Key
+function displayKey(key, expireTime, hwid) {
+  currentKey = key;
+  keyExpireTime = expireTime;
+  userHWID = hwid;
+  
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = keyExpireTime - now;
+  
+  if (remaining <= 0) {
+    localStorage.removeItem('HAX4L_CurrentKey_' + hwid);
+    localStorage.removeItem('HAX4L_ExpireTime_' + hwid);
+    
+    document.getElementById('keyBox').innerHTML = "⏰ KEY ĐÃ HẾT HẠN<br><small>Vui lòng vượt link mới từ game</small>";
+    document.getElementById('keyBox').classList.add('expired');
+    showNotification("⏰ Key đã hết hạn!");
+    return;
+  }
+  
+  document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Key riêng cho máy này - Reload vẫn giữ nguyên</small>`;
+  document.getElementById('keyBox').classList.remove('expired');
+  document.getElementById('copyBtn').style.display = 'inline-block';
+  document.getElementById('timer').style.display = 'block';
+  document.getElementById('hwidInfo').textContent = `ID Máy: ${hwid.substring(0, 12)}...`;
+  
+  document.getElementById('s1').classList.add('completed');
+  document.getElementById('s1').classList.remove('active');
+  document.getElementById('s2').classList.add('completed');
+  document.getElementById('s2').classList.remove('active');
+  document.getElementById('s3').classList.add('completed', 'active');
+  
+  if (countdownInterval) clearInterval(countdownInterval);
+  updateCountdown();
+  countdownInterval = setInterval(updateCountdown, 1000);
+}
+
 // Init
 window.addEventListener('DOMContentLoaded', function() {
   const urlParams = new URLSearchParams(window.location.search);
   const verified = urlParams.get('verified');
+  const hwid = urlParams.get('hwid');
   
-  if (verified === 'true') {
-    currentKey = generateUniqueKey();
-    document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Key này CHỈ dùng được trên 1 máy duy nhất!</small>`;
-    document.getElementById('s1').classList.add('completed');
-    document.getElementById('s1').classList.remove('active');
-    document.getElementById('s2').classList.add('completed');
-    document.getElementById('s2').classList.remove('active');
-    document.getElementById('s3').classList.add('completed', 'active');
-    showNotification("✅ Key mới! Máy đầu tiên nhập → Lock vĩnh viễn!");
+  if (verified === 'true' && hwid) {
+    // ĐÃ VƯỢT LINK + CÓ HWID
+    userHWID = hwid;
+    
+    const newKey = generateKeyFromHWID(hwid);
+    const newExpire = Math.floor(Date.now() / 1000) + (24 * 3600);
+    
+    localStorage.setItem('HAX4L_CurrentKey_' + hwid, newKey);
+    localStorage.setItem('HAX4L_ExpireTime_' + hwid, newExpire);
+    
+    displayKey(newKey, newExpire, hwid);
+    
+    showNotification("✅ Key riêng cho máy này! Hiệu lực 24h");
+    
     setTimeout(() => copyKey(), 2000);
+    
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+  } else if (hwid) {
+    // CÓ HWID NHƯNG CHƯA VƯỢT LINK
+    userHWID = hwid;
+    const savedKey = localStorage.getItem('HAX4L_CurrentKey_' + hwid);
+    const savedExpire = localStorage.getItem('HAX4L_ExpireTime_' + hwid);
+    
+    if (savedKey && savedExpire) {
+      const expire = parseInt(savedExpire);
+      const now = Math.floor(Date.now() / 1000);
+      
+      if (expire > now) {
+        displayKey(savedKey, expire, hwid);
+        const remaining = expire - now;
+        showNotification("✅ Key của máy này còn: " + formatTime(remaining));
+      } else {
+        localStorage.removeItem('HAX4L_CurrentKey_' + hwid);
+        localStorage.removeItem('HAX4L_ExpireTime_' + hwid);
+        
+        document.getElementById('keyBox').innerHTML = "⏰ KEY ĐÃ HẾT HẠN<br><small>Vui lòng vượt link mới từ game</small>";
+        document.getElementById('keyBox').classList.add('expired');
+        showNotification("⏰ Key đã hết hạn! Vui lòng vượt link mới");
+      }
+    } else {
+      document.getElementById('keyBox').innerHTML = "⚠️ CHƯA CÓ KEY<br><small>Vui lòng vượt link từ game để lấy key</small>";
+      document.getElementById('hwidInfo').textContent = `ID Máy: ${hwid.substring(0, 12)}...`;
+    }
   } else {
     document.getElementById('keyBox').innerHTML = "⚠️ VUI LÒNG VÀO TỪ GAME<br><small>Mở Roblox → Chạy script → Bấm 'LẤY KEY'</small>";
     showNotification("⚠️ Vui lòng lấy key từ trong game!");
@@ -331,8 +501,15 @@ function copyKey() {
     return;
   }
   
+  const now = Math.floor(Date.now() / 1000);
+  if (keyExpireTime <= now) {
+    showNotification("⏰ Key đã hết hạn!");
+    return;
+  }
+  
   navigator.clipboard.writeText(currentKey).then(() => {
-    showNotification("✅ Đã copy: " + currentKey + " (1 Key = 1 Máy)");
+    const remaining = keyExpireTime - now;
+    showNotification("✅ Đã copy key! Còn: " + formatTime(remaining));
   }).catch(() => {
     const tempInput = document.createElement('input');
     tempInput.value = currentKey;
@@ -340,7 +517,7 @@ function copyKey() {
     tempInput.select();
     document.execCommand('copy');
     document.body.removeChild(tempInput);
-    showNotification("✅ Đã copy: " + currentKey);
+    showNotification("✅ Đã copy key!");
   });
 }
 
@@ -348,7 +525,7 @@ function showNotification(text) {
   const notif = document.getElementById('notification');
   notif.textContent = text;
   notif.style.opacity = 1;
-  setTimeout(() => notif.style.opacity = 0, 4000);
+  setTimeout(() => notif.style.opacity = 0, 5000);
 }
 </script>
 </body>
