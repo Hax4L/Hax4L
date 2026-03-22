@@ -1,142 +1,69 @@
 --[[
-    HAX4L KEY SYSTEM
-    Script chính: Leaf Hub
-    Link: https://hax4l.github.io/Hax4L/
-    Fix HWID 100%
+    HAX4L KEY SYSTEM V3
+    Logo: https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg
 ]]
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 
--- ============================================
 -- CONFIG
--- ============================================
 local KEY_WEBSITE = "https://hax4l.github.io/Hax4L/"
 local LEAF_HUB_URL = "https://github.com/LeafHubAcademy/LeafHub/raw/refs/heads/main/Leaf.lua"
 local LINK4M_TOKEN = "69bf87bdf47f6d1d8a4b60a3"
+local LOGO_URL = "https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg"
 
--- ============================================
--- LẤY HWID CỦA MÁY (FIX CHO MỌI EXECUTOR)
--- ============================================
+-- LẤY HWID
 local function getHWID()
     local hwid = nil
-    
-    -- Phương án 1: gethwid() - Synapse X, Script-Ware, Krnl
-    if gethwid then
-        hwid = gethwid()
-    end
-    
-    -- Phương án 2: RbxAnalyticsService (Delta, Solara, Fluxus)
+    if gethwid then hwid = gethwid() end
     if not hwid or hwid == "" then
-        local success, result = pcall(function()
-            return game:GetService("RbxAnalyticsService"):GetClientId()
-        end)
-        if success and result then
-            hwid = result
-        end
+        pcall(function() hwid = game:GetService("RbxAnalyticsService"):GetClientId() end)
     end
-    
-    -- Phương án 3: Tạo HWID từ fingerprint (Arceus X, Hydrogen, mobile executors)
     if not hwid or hwid == "" then
-        local fingerprint = {
-            UserId = Players.LocalPlayer.UserId,
-            AccountAge = Players.LocalPlayer.AccountAge,
-            Name = Players.LocalPlayer.Name,
-            DisplayName = Players.LocalPlayer.DisplayName,
-            Locale = Players.LocalPlayer.LocaleId,
-            OsPlatform = (game:GetService("UserInputService"):GetPlatform() or Enum.Platform.None).Name,
-            TimeZone = os.date("%z")
-        }
-        
-        local fingerprintStr = HttpService:JSONEncode(fingerprint)
-        local hash = 0
-        for i = 1, #fingerprintStr do
-            hash = ((hash * 31) + string.byte(fingerprintStr, i)) % 2147483647
-        end
-        hwid = string.format("HWID-%X", hash)
+        hwid = "HWID-" .. Players.LocalPlayer.UserId
     end
-    
-    -- Fallback cuối cùng (nếu tất cả fail)
-    if not hwid or hwid == "" then
-        hwid = "HWID-" .. Players.LocalPlayer.UserId .. "-" .. tostring(os.time())
-    end
-    
     return tostring(hwid)
 end
 
--- ============================================
--- TẠO KEY DỰA TRÊN HWID + NGÀY (GIỐNG WEB)
--- ============================================
-local function generateKeyFromHWID(hwid)
-    local today = os.date("%Y-%m-%d")
-    local combined = tostring(hwid) .. today
-    
-    local hash = 0
-    for i = 1, #combined do
-        hash = ((hash * 32) - hash) + string.byte(combined, i)
-        hash = hash % 2147483647
-    end
-    
-    local chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    local key = "HAX4L-"
-    for i = 1, 12 do
-        if i > 1 and (i-1) % 4 == 0 then key = key .. "-" end
-        local index = (math.abs(hash + i * 13) % #chars) + 1
-        key = key .. string.sub(chars, index, index)
-    end
-    
-    return key
-end
-
--- ============================================
--- KIỂM TRA KEY ĐÃ LƯU
--- ============================================
+-- KIỂM TRA KEY
 local SAVE_FILE = "HAX4L_KeyData.json"
 local savedData = nil
 
 if isfile and readfile and isfile(SAVE_FILE) then
-    local success, data = pcall(function()
-        return HttpService:JSONDecode(readfile(SAVE_FILE))
+    pcall(function()
+        savedData = HttpService:JSONDecode(readfile(SAVE_FILE))
     end)
-    if success then savedData = data end
 end
 
 local userHWID = getHWID()
-local CORRECT_KEY = generateKeyFromHWID(userHWID)
 local today = os.date("%Y-%m-%d")
 
-print("============================================")
-print("DEBUG INFO:")
-print("HWID:", userHWID)
-print("Key:", CORRECT_KEY)
-print("Date:", today)
-print("============================================")
-
--- Kiểm tra key đã lưu
-if savedData and savedData.key == CORRECT_KEY and savedData.hwid == userHWID and savedData.date == today then
+if savedData and savedData.date == today then
     local activatedTime = savedData.activatedTime
     local elapsed = os.time() - activatedTime
     local remaining = (24 * 3600) - elapsed
     
     if remaining > 0 then
-        print("✅ Key hợp lệ! Thời gian còn: " .. math.floor(remaining/3600) .. " giờ " .. math.floor((remaining%3600)/60) .. " phút")
+        print("✅ Key còn hạn: " .. math.floor(remaining/3600) .. "h")
         loadLeafHub(remaining)
         return
     else
-        print("⏰ Key đã hết hạn! Vui lòng lấy key mới")
         if delfile then delfile(SAVE_FILE) end
     end
 end
 
--- ============================================
--- TẠO GUI NHẬP KEY
--- ============================================
+-- TẠO GUI
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local UICorner = Instance.new("UICorner")
 local GlowFrame = Instance.new("Frame")
 local UICorner2 = Instance.new("UICorner")
+
+-- Logo Image
+local LogoImage = Instance.new("ImageLabel")
+local LogoImageCorner = Instance.new("UICorner")
+
 local LogoLabel = Instance.new("TextLabel")
 local TaglineLabel = Instance.new("TextLabel")
 local KeyBox = Instance.new("TextBox")
@@ -146,14 +73,11 @@ local UICorner4 = Instance.new("UICorner")
 local GetKeyBtn = Instance.new("TextButton")
 local UICorner5 = Instance.new("UICorner")
 local StatusLabel = Instance.new("TextLabel")
-local HWIDLabel = Instance.new("TextLabel")
-local CopyHWIDBtn = Instance.new("TextButton")
 
 ScreenGui.Name = "HAX4L_KeySystem"
 ScreenGui.Parent = game.CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Glow Effect
+-- Glow
 GlowFrame.Parent = ScreenGui
 GlowFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 65)
 GlowFrame.BackgroundTransparency = 0.7
@@ -162,7 +86,7 @@ GlowFrame.Size = UDim2.new(0, 420, 0, 420)
 UICorner2.CornerRadius = UDim.new(0, 25)
 UICorner2.Parent = GlowFrame
 
--- Main Frame
+-- Main
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 15, 0)
 MainFrame.BorderSizePixel = 4
@@ -172,59 +96,50 @@ MainFrame.Size = UDim2.new(0, 400, 0, 400)
 UICorner.CornerRadius = UDim.new(0, 20)
 UICorner.Parent = MainFrame
 
--- Logo
+-- Logo Image
+LogoImage.Parent = MainFrame
+LogoImage.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+LogoImage.Position = UDim2.new(0.5, -50, 0, 10)
+LogoImage.Size = UDim2.new(0, 100, 0, 100)
+LogoImage.Image = LOGO_URL
+LogoImage.ScaleType = Enum.ScaleType.Fit
+LogoImageCorner.CornerRadius = UDim.new(1, 0) -- Hình tròn
+LogoImageCorner.Parent = LogoImage
+
+-- Logo Border/Glow
+local LogoBorder = Instance.new("UIStroke")
+LogoBorder.Parent = LogoImage
+LogoBorder.Color = Color3.fromRGB(0, 255, 65)
+LogoBorder.Thickness = 3
+LogoBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+-- Logo Text
 LogoLabel.Parent = MainFrame
 LogoLabel.BackgroundTransparency = 1
-LogoLabel.Position = UDim2.new(0, 0, 0, 10)
-LogoLabel.Size = UDim2.new(1, 0, 0, 50)
+LogoLabel.Position = UDim2.new(0, 0, 0, 115)
+LogoLabel.Size = UDim2.new(1, 0, 0, 40)
 LogoLabel.Font = Enum.Font.GothamBold
 LogoLabel.Text = "HAX4L"
 LogoLabel.TextColor3 = Color3.fromRGB(0, 255, 65)
-LogoLabel.TextSize = 42
+LogoLabel.TextSize = 36
 LogoLabel.TextStrokeTransparency = 0.5
 
 -- Tagline
 TaglineLabel.Parent = MainFrame
 TaglineLabel.BackgroundTransparency = 1
-TaglineLabel.Position = UDim2.new(0, 0, 0, 55)
-TaglineLabel.Size = UDim2.new(1, 0, 0, 20)
+TaglineLabel.Position = UDim2.new(0, 0, 0, 155)
+TaglineLabel.Size = UDim2.new(1, 0, 0, 18)
 TaglineLabel.Font = Enum.Font.Gotham
 TaglineLabel.Text = "LEAF HUB KEY SYSTEM"
 TaglineLabel.TextColor3 = Color3.fromRGB(0, 255, 65)
-TaglineLabel.TextSize = 12
-TaglineLabel.TextTransparency = 0.3
-
--- HWID Info
-HWIDLabel.Parent = MainFrame
-HWIDLabel.BackgroundTransparency = 1
-HWIDLabel.Position = UDim2.new(0, 0, 0, 75)
-HWIDLabel.Size = UDim2.new(0.7, 0, 0, 20)
-HWIDLabel.Font = Enum.Font.Code
-HWIDLabel.Text = "ID: " .. string.sub(userHWID, 1, 20) .. (string.len(userHWID) > 20 and "..." or "")
-HWIDLabel.TextColor3 = Color3.fromRGB(0, 200, 50)
-HWIDLabel.TextSize = 9
-HWIDLabel.TextXAlignment = Enum.TextXAlignment.Left
-HWIDLabel.TextScaled = true
-
--- Copy HWID Button
-CopyHWIDBtn.Parent = MainFrame
-CopyHWIDBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 30)
-CopyHWIDBtn.Position = UDim2.new(0.72, 0, 0, 75)
-CopyHWIDBtn.Size = UDim2.new(0.25, 0, 0, 20)
-CopyHWIDBtn.Font = Enum.Font.GothamBold
-CopyHWIDBtn.Text = "📋 COPY"
-CopyHWIDBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyHWIDBtn.TextSize = 10
-local copyCorner = Instance.new("UICorner")
-copyCorner.CornerRadius = UDim.new(0, 5)
-copyCorner.Parent = CopyHWIDBtn
+TaglineLabel.TextSize = 11
 
 -- Key Input
 KeyBox.Parent = MainFrame
 KeyBox.BackgroundColor3 = Color3.fromRGB(0, 25, 0)
 KeyBox.BorderColor3 = Color3.fromRGB(0, 255, 65)
 KeyBox.BorderSizePixel = 2
-KeyBox.Position = UDim2.new(0.1, 0, 0.28, 0)
+KeyBox.Position = UDim2.new(0.1, 0, 0.48, 0)
 KeyBox.Size = UDim2.new(0.8, 0, 0, 40)
 KeyBox.Font = Enum.Font.GothamBold
 KeyBox.PlaceholderText = "Nhập key từ website..."
@@ -235,10 +150,10 @@ KeyBox.TextSize = 14
 UICorner3.CornerRadius = UDim.new(0, 10)
 UICorner3.Parent = KeyBox
 
--- Submit Button
+-- Submit
 SubmitBtn.Parent = MainFrame
 SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 65)
-SubmitBtn.Position = UDim2.new(0.1, 0, 0.48, 0)
+SubmitBtn.Position = UDim2.new(0.1, 0, 0.62, 0)
 SubmitBtn.Size = UDim2.new(0.8, 0, 0, 40)
 SubmitBtn.Font = Enum.Font.GothamBold
 SubmitBtn.Text = "✓ XÁC NHẬN KEY"
@@ -247,10 +162,10 @@ SubmitBtn.TextSize = 16
 UICorner4.CornerRadius = UDim.new(0, 10)
 UICorner4.Parent = SubmitBtn
 
--- Get Key Button
+-- Get Key
 GetKeyBtn.Parent = MainFrame
 GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 50)
-GetKeyBtn.Position = UDim2.new(0.1, 0, 0.65, 0)
+GetKeyBtn.Position = UDim2.new(0.1, 0, 0.76, 0)
 GetKeyBtn.Size = UDim2.new(0.8, 0, 0, 40)
 GetKeyBtn.Font = Enum.Font.GothamBold
 GetKeyBtn.Text = "🌐 LẤY KEY TẠI WEBSITE"
@@ -259,147 +174,87 @@ GetKeyBtn.TextSize = 14
 UICorner5.CornerRadius = UDim.new(0, 10)
 UICorner5.Parent = GetKeyBtn
 
--- Status Label
+-- Status
 StatusLabel.Parent = MainFrame
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Position = UDim2.new(0, 0, 0, 330)
-StatusLabel.Size = UDim2.new(1, 0, 0, 60)
+StatusLabel.Position = UDim2.new(0, 0, 0.9, 0)
+StatusLabel.Size = UDim2.new(1, 0, 0, 35)
 StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Text = ""
-StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-StatusLabel.TextSize = 11
+StatusLabel.Text = "Mỗi lần lấy → Key mới hoàn toàn khác"
+StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 50)
+StatusLabel.TextSize = 10
 StatusLabel.TextWrapped = true
 
--- ============================================
--- NÚT COPY HWID
--- ============================================
-CopyHWIDBtn.MouseButton1Click:Connect(function()
-    setclipboard(userHWID)
-    CopyHWIDBtn.Text = "✓ ĐÃ COPY"
-    CopyHWIDBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
-    wait(2)
-    CopyHWIDBtn.Text = "📋 COPY"
-    CopyHWIDBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 30)
-end)
-
--- ============================================
--- NÚT GET KEY - TỰ ĐỘNG MỞ WEB
--- ============================================
+-- GET KEY
 GetKeyBtn.MouseButton1Click:Connect(function()
     GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 65)
     wait(0.1)
     GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 50)
     
-    StatusLabel.Text = "⏳ Đang tạo link...\nVui lòng đợi..."
+    StatusLabel.Text = "⏳ Đang tạo link..."
     StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
     
-    -- Tạo link chứa key + HWID + date
-    local destinationUrl = KEY_WEBSITE .. "?key=" .. HttpService:UrlEncode(CORRECT_KEY) .. 
-                           "&hwid=" .. HttpService:UrlEncode(userHWID) .. 
-                           "&date=" .. HttpService:UrlEncode(today)
-    
-    -- Tạo link rút gọn Link4m
+    local destinationUrl = KEY_WEBSITE .. "?verified=true"
     local shortLink = "https://link4m.co/st?api=" .. LINK4M_TOKEN .. "&url=" .. HttpService:UrlEncode(destinationUrl)
     
-    wait(0.3)
-    
-    -- Copy link vào clipboard
     setclipboard(shortLink)
+    StatusLabel.Text = "✅ Đang mở web..."
     
-    StatusLabel.Text = "✅ Đang mở website...\n(Nếu không tự mở, link đã copy)"
-    StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    
-    -- MỞ WEBSITE TỰ ĐỘNG
-    local opened = false
-    
-    if request then
-        pcall(function()
-            request({Url = shortLink, Method = "GET"})
-            opened = true
-        end)
-    end
-    
-    if not opened and syn and syn.request then
-        pcall(function()
-            syn.request({Url = shortLink, Method = "GET"})
-            opened = true
-        end)
-    end
-    
-    if not opened and http_request then
-        pcall(function()
-            http_request({Url = shortLink, Method = "GET"})
-            opened = true
-        end)
-    end
+    if request then pcall(function() request({Url=shortLink,Method="GET"}) end) end
+    if syn and syn.request then pcall(function() syn.request({Url=shortLink,Method="GET"}) end) end
     
     StarterGui:SetCore("SendNotification", {
-        Title = "HAX4L × LEAF HUB",
-        Text = opened and "Website đã mở! Vượt link để lấy key" or "Link đã copy! Dán vào browser",
-        Duration = 8
+        Title = "HAX4L",
+        Text = "Web đã mở! Vượt link → Copy key",
+        Duration = 5
     })
 end)
 
--- ============================================
--- NÚT SUBMIT KEY
--- ============================================
+-- SUBMIT KEY
 SubmitBtn.MouseButton1Click:Connect(function()
     local inputKey = KeyBox.Text:upper():gsub("%s+", "")
     
-    if inputKey == CORRECT_KEY then
-        StatusLabel.Text = "✅ KEY HỢP LỆ!\nĐang load Leaf Hub..."
-        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-        
-        -- Lưu key + thời gian kích hoạt
-        local keyData = {
-            key = CORRECT_KEY,
-            hwid = userHWID,
-            date = today,
-            activatedTime = os.time()
-        }
-        
-        if writefile then
-            writefile(SAVE_FILE, HttpService:JSONEncode(keyData))
-        end
-        
-        wait(1)
-        ScreenGui:Destroy()
-        
-        loadLeafHub(24 * 3600)
-        
-    else
-        StatusLabel.Text = "❌ KEY SAI HOẶC HẾT HẠN!\nKey: " .. CORRECT_KEY
+    if not inputKey:match("^HAX4L%-%w%w%w%w%-%w%w%w%w%-%w%w%w%w$") then
+        StatusLabel.Text = "❌ Format sai! Phải: HAX4L-XXXX-XXXX-XXXX"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        
-        -- Shake animation
-        for i = 1, 3 do
-            MainFrame.Position = MainFrame.Position + UDim2.new(0, 10, 0, 0)
+        for i=1,3 do
+            MainFrame.Position = MainFrame.Position + UDim2.new(0,10,0,0)
             wait(0.05)
-            MainFrame.Position = MainFrame.Position - UDim2.new(0, 20, 0, 0)
+            MainFrame.Position = MainFrame.Position - UDim2.new(0,20,0,0)
             wait(0.05)
-            MainFrame.Position = MainFrame.Position + UDim2.new(0, 10, 0, 0)
-            wait(0.05)
+            MainFrame.Position = MainFrame.Position + UDim2.new(0,10,0,0)
         end
+        return
     end
+    
+    StatusLabel.Text = "✅ KEY HỢP LỆ! Đang load..."
+    StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    
+    local keyData = {
+        key = inputKey,
+        hwid = userHWID,
+        date = today,
+        activatedTime = os.time()
+    }
+    
+    if writefile then
+        writefile(SAVE_FILE, HttpService:JSONEncode(keyData))
+    end
+    
+    wait(1)
+    ScreenGui:Destroy()
+    loadLeafHub(24 * 3600)
 end)
 
--- ============================================
--- LOAD LEAF HUB + HIỆN THỜI GIAN
--- ============================================
+-- LOAD LEAF HUB
 function loadLeafHub(remainingSeconds)
-    print("============================================")
-    print("       HAX4L × LEAF HUB")
-    print("============================================")
-    
     local TimeGui = Instance.new("ScreenGui")
     local TimeFrame = Instance.new("Frame")
     local UICorner = Instance.new("UICorner")
     local TimeLabel = Instance.new("TextLabel")
-    local UIGradient = Instance.new("UIGradient")
     
     TimeGui.Name = "HAX4L_Timer"
     TimeGui.Parent = game.CoreGui
-    TimeGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     TimeGui.ResetOnSpawn = false
     
     TimeFrame.Parent = TimeGui
@@ -409,16 +264,8 @@ function loadLeafHub(remainingSeconds)
     TimeFrame.BorderColor3 = Color3.fromRGB(0, 255, 65)
     TimeFrame.Position = UDim2.new(0, 10, 0, 10)
     TimeFrame.Size = UDim2.new(0, 280, 0, 70)
-    
     UICorner.CornerRadius = UDim.new(0, 12)
     UICorner.Parent = TimeFrame
-    
-    UIGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 40, 0)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 15, 0))
-    }
-    UIGradient.Rotation = 90
-    UIGradient.Parent = TimeFrame
     
     TimeLabel.Parent = TimeFrame
     TimeLabel.BackgroundTransparency = 1
@@ -426,70 +273,33 @@ function loadLeafHub(remainingSeconds)
     TimeLabel.Font = Enum.Font.GothamBold
     TimeLabel.TextColor3 = Color3.fromRGB(0, 255, 65)
     TimeLabel.TextSize = 16
-    TimeLabel.TextStrokeTransparency = 0.3
-    TimeLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     
     local startTime = os.time()
-    local function updateTimer()
-        local elapsed = os.time() - startTime
-        local remaining = remainingSeconds - elapsed
-        
-        if remaining <= 0 then
-            TimeLabel.Text = "⏰ KEY HẾT HẠN!"
-            TimeLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            TimeFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
-            wait(5)
-            TimeGui:Destroy()
-            if delfile and isfile(SAVE_FILE) then delfile(SAVE_FILE) end
-            game.Players.LocalPlayer:Kick("Key đã hết hạn!\n" .. KEY_WEBSITE)
-            return
-        end
-        
-        local hours = math.floor(remaining / 3600)
-        local minutes = math.floor((remaining % 3600) / 60)
-        local seconds = remaining % 60
-        
-        if remaining <= 3600 then
-            TimeLabel.TextColor3 = Color3.fromRGB(255, 150, 0)
-            TimeFrame.BorderColor3 = Color3.fromRGB(255, 150, 0)
-        elseif remaining <= 600 then
-            TimeLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            TimeFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
-        end
-        
-        TimeLabel.Text = string.format("⏰ HAX4L × LEAF HUB\n⏳ Còn: %02d:%02d:%02d", hours, minutes, seconds)
-    end
-    
     spawn(function()
         while true do
-            updateTimer()
+            local remaining = remainingSeconds - (os.time() - startTime)
+            if remaining <= 0 then
+                TimeLabel.Text = "⏰ HẾT HẠN!"
+                wait(3)
+                if delfile then delfile(SAVE_FILE) end
+                game.Players.LocalPlayer:Kick("Key hết hạn!")
+                return
+            end
+            local h = math.floor(remaining/3600)
+            local m = math.floor((remaining%3600)/60)
+            local s = remaining%60
+            TimeLabel.Text = string.format("⏰ HAX4L\n⏳ %02d:%02d:%02d", h, m, s)
             wait(1)
         end
     end)
     
-    StarterGui:SetCore("SendNotification", {
-        Title = "HAX4L × LEAF HUB",
-        Text = "Đang load Leaf Hub...",
-        Duration = 5
-    })
-    
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet(LEAF_HUB_URL))()
+    pcall(function()
+        loadstring(game:HttpGet(LEAF_HUB_URL))()
     end)
     
-    if success then
-        print("✅ Leaf Hub loaded!")
-        StarterGui:SetCore("SendNotification", {
-            Title = "HAX4L × LEAF HUB",
-            Text = "✅ Leaf Hub đã load thành công!",
-            Duration = 5
-        })
-    else
-        warn("❌ Lỗi:", result)
-        StarterGui:SetCore("SendNotification", {
-            Title = "HAX4L × LEAF HUB",
-            Text = "❌ Lỗi load! Thử lại",
-            Duration = 10
-        })
-    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "HAX4L × LEAF HUB",
+        Text = "✅ Loaded!",
+        Duration = 3
+    })
 end
