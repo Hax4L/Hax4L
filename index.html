@@ -200,6 +200,17 @@
       font-style:italic;
     }
     
+    .debug-info {
+      background:rgba(255,0,0,0.1);
+      border:1px solid #f00;
+      padding:10px;
+      margin-top:15px;
+      border-radius:8px;
+      font-size:0.75rem;
+      text-align:left;
+      color:#ff5555;
+    }
+    
     @media screen and (max-width:480px) {
       html { font-size:13px; }
       .container { padding:18px 15px; }
@@ -237,11 +248,14 @@
       ✅ <strong>Mỗi ngày key khác nhau</strong><br>
       ✅ Thời gian: <strong>24 giờ</strong> từ lúc kích hoạt<br>
       📌 Script loadstring:<br>
-      <code>loadstring(game:HttpGet("https://raw.githubusercontent.com/yourusername/hax4l/main/script.lua"))()</code>
+      <code>loadstring(game:HttpGet("https://raw.githubusercontent.com/hax4l/Hax4L/main/script.lua"))()</code>
       <div class="hwid-info" id="hwidInfo">Đang phát hiện máy...</div>
     </div>
     
     <div class="timer">⏰ Key mới sau: <span id="countdown">--:--:--</span></div>
+    
+    <!-- Debug info -->
+    <div class="debug-info" id="debugInfo" style="display:none;"></div>
   </div>
 
   <div class="notification" id="notification">✅ THÔNG BÁO</div>
@@ -278,42 +292,17 @@ function drawMatrix() {
 }
 setInterval(drawMatrix, 35);
 
-// Generate HWID
-async function generateHWID() {
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-  const fingerprint = {
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    platform: navigator.platform,
-    hardwareConcurrency: navigator.hardwareConcurrency,
-    deviceMemory: navigator.deviceMemory || 0,
-    screenResolution: `${screen.width}x${screen.height}`,
-    colorDepth: screen.colorDepth,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    webglVendor: gl ? gl.getParameter(gl.VENDOR) : '',
-    webglRenderer: gl ? gl.getParameter(gl.RENDERER) : ''
-  };
-  const fingerprintString = JSON.stringify(fingerprint);
-  let hash = 0;
-  for (let i = 0; i < fingerprintString.length; i++) {
-    const char = fingerprintString.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  const hwid = Math.abs(hash).toString(16).toUpperCase().padStart(12, '0');
-  return hwid;
-}
-
-// Generate Key từ HWID + Ngày
+// Generate Key từ HWID + Ngày (GIỐNG HỆT SCRIPT LUA)
 function generateKeyFromHWID(hwid) {
   const today = new Date().toISOString().split('T')[0];
   const combined = hwid + today;
+  
   let hash = 0;
   for(let i = 0; i < combined.length; i++) {
-    hash = ((hash << 5) - hash) + combined.charCodeAt(i);
-    hash = hash & hash;
+    hash = ((hash * 32) - hash) + combined.charCodeAt(i);
+    hash = hash % 2147483647;
   }
+  
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let key = "HAX4L-";
   for(let i = 0; i < 12; i++) {
@@ -321,69 +310,78 @@ function generateKeyFromHWID(hwid) {
     const index = Math.abs((hash + i * 13) % chars.length);
     key += chars[index];
   }
+  
   return key;
 }
 
-// Init
-window.addEventListener('DOMContentLoaded', async function() {
-  userHWID = await generateHWID();
-  document.getElementById('hwidInfo').textContent = `ID máy: ${userHWID.substring(0, 8)}...`;
-  
+// Init - Kiểm tra URL params
+window.addEventListener('DOMContentLoaded', function() {
   const urlParams = new URLSearchParams(window.location.search);
   const keyFromUrl = urlParams.get('key');
   const hwidFromUrl = urlParams.get('hwid');
   const dateFromUrl = urlParams.get('date');
   const today = new Date().toISOString().split('T')[0];
   
-  if (keyFromUrl && hwidFromUrl === userHWID && dateFromUrl === today) {
-    currentKey = keyFromUrl;
-    document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Key hợp lệ cho máy này hôm nay</small>`;
-    document.getElementById('getBtn').style.display = 'none';
-    document.getElementById('copyBtn').style.display = 'inline-block';
-    document.getElementById('s1').classList.add('completed');
-    document.getElementById('s1').classList.remove('active');
-    document.getElementById('s2').classList.add('completed');
-    document.getElementById('s2').classList.remove('active');
-    document.getElementById('s3').classList.add('completed', 'active');
-    showNotification("✅ Key dành riêng cho máy bạn!");
-  } else if (keyFromUrl) {
-    showNotification("❌ Key không hợp lệ hoặc đã hết hạn!");
-    document.getElementById('keyBox').innerHTML = "❌ KEY KHÔNG HỢP LỆ<br><small>Lấy key mới cho máy này</small>";
+  // Debug info
+  const debugInfo = document.getElementById('debugInfo');
+  debugInfo.innerHTML = `
+    <strong>DEBUG INFO:</strong><br>
+    Key từ URL: ${keyFromUrl || 'Không có'}<br>
+    HWID từ URL: ${hwidFromUrl || 'Không có'}<br>
+    Date từ URL: ${dateFromUrl || 'Không có'}<br>
+    Date hiện tại: ${today}
+  `;
+  debugInfo.style.display = 'block';
+  
+  if (keyFromUrl && hwidFromUrl && dateFromUrl) {
+    userHWID = hwidFromUrl;
+    document.getElementById('hwidInfo').textContent = `ID máy: ${userHWID.substring(0, 12)}...`;
+    
+    // Tạo lại key để so sánh
+    const expectedKey = generateKeyFromHWID(userHWID);
+    
+    debugInfo.innerHTML += `<br>Key mong đợi: ${expectedKey}<br>Key nhận được: ${keyFromUrl}`;
+    
+    if (keyFromUrl === expectedKey && dateFromUrl === today) {
+      // Key hợp lệ
+      currentKey = keyFromUrl;
+      document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Key hợp lệ cho máy này hôm nay!</small>`;
+      document.getElementById('getBtn').style.display = 'none';
+      document.getElementById('copyBtn').style.display = 'inline-block';
+      document.getElementById('s1').classList.add('completed');
+      document.getElementById('s1').classList.remove('active');
+      document.getElementById('s2').classList.add('completed');
+      document.getElementById('s2').classList.remove('active');
+      document.getElementById('s3').classList.add('completed', 'active');
+      showNotification("✅ Key dành riêng cho máy bạn!");
+      debugInfo.style.display = 'none';
+    } else if (dateFromUrl !== today) {
+      // Key hết hạn (ngày khác)
+      showNotification("❌ Key đã hết hạn (ngày khác)!");
+      document.getElementById('keyBox').innerHTML = "⏰ KEY ĐÃ HẾT HẠN<br><small>Mỗi ngày cần lấy key mới</small>";
+    } else {
+      // Key không khớp
+      showNotification("❌ Key không hợp lệ!");
+      document.getElementById('keyBox').innerHTML = "❌ KEY KHÔNG HỢP LỆ<br><small>Lấy key mới cho máy này</small>";
+    }
+  } else {
+    // Không có params → người dùng mới
+    document.getElementById('hwidInfo').textContent = "Chưa có HWID (chờ vượt link)";
   }
 });
 
 // Get Key
 function getKey() {
-  const btn = document.getElementById('getBtn');
-  const keyBox = document.getElementById('keyBox');
-  btn.disabled = true;
-  btn.textContent = "⏳ ĐANG TẠO...";
-  keyBox.innerHTML = "⏳ Đang tạo key riêng...<br><small>Vui lòng đợi...</small>";
-
-  currentKey = generateKeyFromHWID(userHWID);
-  const today = new Date().toISOString().split('T')[0];
-  const currentUrl = window.location.href.split('?')[0];
-  const destinationUrl = currentUrl + "?key=" + encodeURIComponent(currentKey) + "&hwid=" + encodeURIComponent(userHWID) + "&date=" + encodeURIComponent(today);
-  const shortLink = `https://link4m.co/st?api=${LINK4M_API_TOKEN}&url=${encodeURIComponent(destinationUrl)}`;
-  
-  setTimeout(() => {
-    keyBox.innerHTML = `✅ KEY RIÊNG CHO MÁY BẠN!<br><small>Bấm nút để vượt link</small>`;
-    document.getElementById('s1').classList.remove('active');
-    document.getElementById('s1').classList.add('completed');
-    document.getElementById('s2').classList.add('active');
-    btn.disabled = false;
-    btn.textContent = "🚀 VƯỢT LINK4M";
-    btn.onclick = function() {
-      window.open(shortLink, '_blank');
-      keyBox.innerHTML = "⏳ Chờ vượt link...<br><small>Key chỉ dùng được trên máy này!</small>";
-      showNotification("Key hôm nay riêng cho máy bạn!");
-    };
-  }, 800);
+  alert("⚠️ QUAN TRỌNG!\n\nBạn cần lấy key TỪ TRONG GAME (Roblox)!\n\n1. Mở Roblox\n2. Chạy script\n3. Bấm nút 'LẤY KEY' trong game\n4. Sẽ tự động mở trang này với key!");
 }
 
 // Copy Key
 function copyKey() {
-  if (!currentKey) return;
+  if (!currentKey) {
+    showNotification("❌ Chưa có key!");
+    return;
+  }
+  
   navigator.clipboard.writeText(currentKey).then(() => {
     showNotification("✅ Đã copy: " + currentKey);
   }).catch(() => {
