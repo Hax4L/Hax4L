@@ -1,9 +1,16 @@
 --[[
-    HAX4L KEY SYSTEM V1 - FINAL
-    - Nhập key 1 lần → Nhớ vĩnh viễn
-    - Tự động đăng nhập mỗi lần mở script
-    - Chỉ cần nhập lại khi key hết hạn (24h)
-    - 1 Key = 1 Máy (Lock HWID)
+    ╔════════════════════════════════════════╗
+    ║       HAX4L KEY SYSTEM - FINAL         ║
+    ║     Premium Key System for Leaf Hub    ║
+    ╚════════════════════════════════════════╝
+    
+    TÍNH NĂNG:
+    ✅ Tự động đăng nhập lại (không cần nhập key mỗi lần)
+    ✅ 1 Key = 1 Máy (HWID Lock)
+    ✅ Mỗi máy có key riêng (không trùng lặp)
+    ✅ Hiển thị thời gian còn lại
+    ✅ Menu nhỏ gọn không che game
+    ✅ Tự động mở web lấy key
 ]]
 
 local HttpService = game:GetService("HttpService")
@@ -11,27 +18,43 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 
--- CONFIG
-local KEY_WEBSITE = "https://hax4l.github.io/Hax4L/"
+-- ============================================
+-- CONFIG (THAY ĐỔI CÁC GIÁ TRỊ NÀY)
+-- ============================================
+local KEY_WEBSITE = "https://hax4l.github.io/Hax4L/" -- ⚠️ THAY BẰNG LINK GITHUB PAGES CỦA BẠN
 local LEAF_HUB_URL = "https://github.com/LeafHubAcademy/LeafHub/raw/refs/heads/main/Leaf.lua"
-local LINK4M_TOKEN = "69bf87bdf47f6d1d8a4b60a3"
-local LOGO_IMAGE_ID = "rbxassetid://92734837522941"
+local LINK4M_TOKEN = "69bf87bdf47f6d1d8a4b60a3" -- Token Link4m của bạn
+local LOGO_IMAGE_ID = "rbxassetid://92734837522941" -- ID ảnh logo
 
--- LẤY HWID
+-- ============================================
+-- HÀM LẤY HWID (Hardware ID)
+-- ============================================
 local function getHWID()
     local hwid = nil
-    if gethwid then hwid = gethwid() end
-    if not hwid or hwid == "" then
-        pcall(function() hwid = game:GetService("RbxAnalyticsService"):GetClientId() end)
+    
+    -- Thử nhiều phương án để lấy HWID
+    if gethwid then 
+        hwid = gethwid() 
     end
+    
+    if not hwid or hwid == "" then
+        pcall(function() 
+            hwid = game:GetService("RbxAnalyticsService"):GetClientId() 
+        end)
+    end
+    
     if not hwid or hwid == "" then
         hwid = "HWID-" .. Players.LocalPlayer.UserId
     end
+    
     return tostring(hwid)
 end
 
--- LOAD DATABASE KEY
+-- ============================================
+-- DATABASE KEY (Lưu key đã dùng)
+-- ============================================
 local keyDatabase = {}
+
 local function loadKeyDatabase()
     if isfile and readfile and isfile("HAX4L_KeyDB.json") then
         pcall(function()
@@ -48,7 +71,9 @@ end
 
 loadKeyDatabase()
 
+-- ============================================
 -- KIỂM TRA KEY ĐÃ LƯU
+-- ============================================
 local SAVE_FILE = "HAX4L_KeyData.json"
 local savedData = nil
 
@@ -62,18 +87,15 @@ local userHWID = getHWID()
 local today = os.date("%Y-%m-%d")
 
 -- ============================================
--- TỰ ĐỘNG ĐĂNG NHẬP (KHÔNG CẦN NHẬP KEY LẠI)
+-- TỰ ĐỘNG ĐĂNG NHẬP (Không cần nhập key lại)
 -- ============================================
 if savedData and savedData.hwid == userHWID then
-    -- Kiểm tra ngày
     if savedData.date == today then
-        -- Key còn hạn trong ngày
         local activatedTime = savedData.activatedTime
         local elapsed = os.time() - activatedTime
         local remaining = (24 * 3600) - elapsed
         
         if remaining > 0 then
-            -- ✅ TỰ ĐỘNG ĐĂNG NHẬP THÀNH CÔNG
             print("╔════════════════════════════════════════╗")
             print("║  ✅ TỰ ĐỘNG ĐĂNG NHẬP THÀNH CÔNG!      ║")
             print("╠════════════════════════════════════════╣")
@@ -84,7 +106,7 @@ if savedData and savedData.hwid == userHWID then
             
             StarterGui:SetCore("SendNotification", {
                 Title = "HAX4L × LEAF HUB",
-                Text = "✅ Tự động đăng nhập thành công!\nKey còn: " .. math.floor(remaining/3600) .. "h " .. math.floor((remaining%3600)/60) .. "m",
+                Text = "✅ Tự động đăng nhập!\nKey còn: " .. math.floor(remaining/3600) .. "h " .. math.floor((remaining%3600)/60) .. "m",
                 Duration = 6,
                 Icon = LOGO_IMAGE_ID
             })
@@ -92,10 +114,7 @@ if savedData and savedData.hwid == userHWID then
             loadLeafHub(remaining, savedData.key)
             return
         else
-            -- Key hết hạn (quá 24h)
-            print("⏰ Key đã hết hạn (quá 24h)! Cần nhập key mới")
             if delfile then delfile(SAVE_FILE) end
-            
             StarterGui:SetCore("SendNotification", {
                 Title = "HAX4L",
                 Text = "⏰ Key đã hết hạn (24h)!\nVui lòng lấy key mới",
@@ -103,10 +122,7 @@ if savedData and savedData.hwid == userHWID then
             })
         end
     else
-        -- Ngày khác → Key hết hạn
-        print("⏰ Key đã hết hạn (ngày mới)! Cần nhập key mới")
         if delfile then delfile(SAVE_FILE) end
-        
         StarterGui:SetCore("SendNotification", {
             Title = "HAX4L",
             Text = "⏰ Ngày mới! Vui lòng lấy key mới",
@@ -116,7 +132,7 @@ if savedData and savedData.hwid == userHWID then
 end
 
 -- ============================================
--- TẠO GUI (Chỉ hiện khi chưa có key hoặc key hết hạn)
+-- TẠO GUI MENU (Nhỏ gọn 300x300px)
 -- ============================================
 print("🔑 Chưa có key hoặc key đã hết hạn → Hiện menu nhập key")
 
@@ -152,7 +168,7 @@ MainFrame.Draggable = true
 UICorner.CornerRadius = UDim.new(0, 12)
 UICorner.Parent = MainFrame
 
--- Shadow
+-- Shadow/Glow
 local Shadow = Instance.new("ImageLabel")
 Shadow.Parent = MainFrame
 Shadow.BackgroundTransparency = 1
@@ -163,7 +179,7 @@ Shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 Shadow.ImageColor3 = Color3.fromRGB(0, 255, 65)
 Shadow.ImageTransparency = 0.7
 
--- Logo
+-- Logo Image
 LogoImage.Parent = MainFrame
 LogoImage.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 LogoImage.Position = UDim2.new(0.5, -30, 0, 15)
@@ -196,7 +212,7 @@ StatusLabel.Text = "Nhập 1 lần → Nhớ vĩnh viễn"
 StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
 StatusLabel.TextSize = 9
 
--- Key Input
+-- Key Input Box
 KeyBox.Parent = MainFrame
 KeyBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 KeyBox.Position = UDim2.new(0.08, 0, 0, 130)
@@ -210,7 +226,7 @@ KeyBox.TextSize = 12
 KeyBoxCorner.CornerRadius = UDim.new(0, 8)
 KeyBoxCorner.Parent = KeyBox
 
--- Submit
+-- Submit Button
 SubmitBtn.Parent = MainFrame
 SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
 SubmitBtn.Position = UDim2.new(0.08, 0, 0, 175)
@@ -222,7 +238,7 @@ SubmitBtn.TextSize = 13
 SubmitCorner.CornerRadius = UDim.new(0, 8)
 SubmitCorner.Parent = SubmitBtn
 
--- Get Key
+-- Get Key Button
 GetKeyBtn.Parent = MainFrame
 GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
 GetKeyBtn.Position = UDim2.new(0.08, 0, 0, 215)
@@ -234,7 +250,7 @@ GetKeyBtn.TextSize = 13
 GetKeyCorner.CornerRadius = UDim.new(0, 8)
 GetKeyCorner.Parent = GetKeyBtn
 
--- Close
+-- Close Button
 CloseBtn.Parent = MainFrame
 CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 CloseBtn.Position = UDim2.new(1, -25, 0, 5)
@@ -246,38 +262,54 @@ CloseBtn.TextSize = 16
 CloseCorner.CornerRadius = UDim.new(0, 5)
 CloseCorner.Parent = CloseBtn
 
+-- ============================================
+-- NÚT ĐÓNG
+-- ============================================
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- GET KEY
+-- ============================================
+-- NÚT LẤY KEY (Tự động mở web + gửi HWID)
+-- ============================================
 GetKeyBtn.MouseButton1Click:Connect(function()
     GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 250)
     wait(0.1)
     GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
     
-    StatusLabel.Text = "Đang mở website..."
+    StatusLabel.Text = "Đang tạo link..."
     StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
     
-    local destinationUrl = KEY_WEBSITE .. "?verified=true"
+    -- Tạo URL có HWID (để web sinh key riêng cho máy này)
+    local destinationUrl = KEY_WEBSITE .. "?verified=true&hwid=" .. HttpService:UrlEncode(userHWID)
     local shortLink = "https://link4m.co/st?api=" .. LINK4M_TOKEN .. "&url=" .. HttpService:UrlEncode(destinationUrl)
     
     setclipboard(shortLink)
     
-    if request then pcall(function() request({Url=shortLink,Method="GET"}) end) end
-    if syn and syn.request then pcall(function() syn.request({Url=shortLink,Method="GET"}) end) end
+    -- Mở web tự động (hỗ trợ nhiều executor)
+    if request then 
+        pcall(function() request({Url=shortLink,Method="GET"}) end) 
+    end
+    if syn and syn.request then 
+        pcall(function() syn.request({Url=shortLink,Method="GET"}) end) 
+    end
+    if http_request then
+        pcall(function() http_request({Url=shortLink,Method="GET"}) end)
+    end
     
     StarterGui:SetCore("SendNotification", {
         Title = "HAX4L",
-        Text = "Web đã mở! Vượt link → Copy key",
+        Text = "Web đã mở! Vượt link → Key riêng cho máy này",
         Duration = 5
     })
     
-    StatusLabel.Text = "Lấy key xong → Dán vào đây"
+    StatusLabel.Text = "Key sẽ riêng cho máy này!"
     StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
 end)
 
--- SUBMIT KEY
+-- ============================================
+-- NÚT SUBMIT KEY
+-- ============================================
 SubmitBtn.MouseButton1Click:Connect(function()
     local inputKey = KeyBox.Text:upper():gsub("%s+", "")
     
@@ -297,7 +329,6 @@ SubmitBtn.MouseButton1Click:Connect(function()
     if keyDatabase[inputKey] then
         local lockedHWID = keyDatabase[inputKey]
         if lockedHWID ~= userHWID then
-            -- Key đã lock vào máy khác
             SubmitBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
             SubmitBtn.Text = "❌ KEY ĐÃ DÙNG!"
             StatusLabel.Text = "Key đã được dùng trên máy khác!"
@@ -325,9 +356,7 @@ SubmitBtn.MouseButton1Click:Connect(function()
     StatusLabel.Text = "Đang lưu key vĩnh viễn..."
     StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
     
-    -- ============================================
-    -- LƯU KEY VĨNH VIỄN (Không cần nhập lại)
-    -- ============================================
+    -- Lưu key vĩnh viễn
     local keyData = {
         key = inputKey,
         hwid = userHWID,
@@ -357,7 +386,7 @@ SubmitBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ============================================
--- LOAD LEAF HUB + TIMER
+-- LOAD LEAF HUB + TIMER NHỎ GỌN
 -- ============================================
 function loadLeafHub(remainingSeconds, keyUsed)
     print("╔════════════════════════════════════════╗")
@@ -367,9 +396,9 @@ function loadLeafHub(remainingSeconds, keyUsed)
     print("║  HWID:", userHWID)
     print("║  Thời gian:", math.floor(remainingSeconds/3600) .. "h")
     print("║  Lưu: Vĩnh viễn (tự động đăng nhập)   ║")
-    print("╚════════════════════════════════════════╝")
+    print("╚════���═══════════════════════════════════╝")
     
-    -- Timer nhỏ gọn
+    -- Timer nhỏ gọn góc phải màn hình
     local TimeGui = Instance.new("ScreenGui")
     local TimeButton = Instance.new("TextButton")
     local TimeCorner = Instance.new("UICorner")
@@ -391,7 +420,7 @@ function loadLeafHub(remainingSeconds, keyUsed)
     TimeCorner.CornerRadius = UDim.new(0, 8)
     TimeCorner.Parent = TimeButton
     
-    -- Hover
+    -- Hover effect
     TimeButton.MouseEnter:Connect(function()
         TweenService:Create(TimeButton, TweenInfo.new(0.2), {
             BackgroundTransparency = 0.1, 
@@ -406,6 +435,7 @@ function loadLeafHub(remainingSeconds, keyUsed)
         }):Play()
     end)
     
+    -- Update timer
     local startTime = os.time()
     spawn(function()
         while true do
@@ -416,7 +446,6 @@ function loadLeafHub(remainingSeconds, keyUsed)
                 TimeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
                 wait(5)
                 
-                -- Xóa key đã hết hạn
                 if delfile and isfile(SAVE_FILE) then 
                     delfile(SAVE_FILE)
                     print("🗑️ Đã xóa key hết hạn")
@@ -437,7 +466,6 @@ function loadLeafHub(remainingSeconds, keyUsed)
             local m = math.floor((remaining%3600)/60)
             TimeButton.Text = string.format("⏰ %02d:%02d", h, m)
             
-            -- Đổi màu khi sắp hết
             if remaining <= 3600 then
                 TimeButton.TextColor3 = Color3.fromRGB(255, 150, 0)
             elseif remaining <= 600 then
