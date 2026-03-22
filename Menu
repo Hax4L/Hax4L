@@ -11,7 +11,7 @@ local StarterGui = game:GetService("StarterGui")
 -- ============================================
 -- CONFIG
 -- ============================================
-local KEY_WEBSITE = "https://yourusername.github.io/hax4l" -- THAY LINK GITHUB PAGES CỦA BẠN
+local KEY_WEBSITE = "https://hax4l.github.io/Hax4L/" -- THAY LINK GITHUB PAGES CỦA BẠN
 local LEAF_HUB_URL = "https://github.com/LeafHubAcademy/LeafHub/raw/refs/heads/main/Leaf.lua"
 
 -- ============================================
