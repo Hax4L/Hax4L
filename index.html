@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>HAX4L - Premium Key System</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
+  <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
     
@@ -53,16 +53,33 @@
       to { opacity:1; transform:translateY(0); }
     }
     
-    .logo {
+    /* Logo Image */
+    .logo-img {
+      width:clamp(80px,15vw,120px);
+      height:clamp(80px,15vw,120px);
+      border-radius:50%;
+      border:4px solid #0f0;
+      box-shadow:0 0 30px rgba(0,255,65,0.8);
+      margin:0 auto 15px;
+      animation:pulse 2s infinite;
+      object-fit:cover;
+    }
+    
+    @keyframes pulse {
+      0%,100% { box-shadow:0 0 20px rgba(0,255,65,0.8); transform:scale(1); }
+      50% { box-shadow:0 0 50px rgba(0,255,65,1); transform:scale(1.05); }
+    }
+    
+    .logo-text {
       font-size:clamp(2rem,7vw,3.5rem);
       font-weight:900;
       margin-bottom:clamp(5px,1.5vw,10px);
       text-shadow:0 0 clamp(20px,5vw,35px) #0f0;
       letter-spacing:clamp(3px,1vw,8px);
-      animation:pulse 2s infinite;
+      animation:textGlow 2s infinite;
     }
     
-    @keyframes pulse {
+    @keyframes textGlow {
       0%,100% { text-shadow:0 0 20px #0f0,0 0 40px #0f0; }
       50% { text-shadow:0 0 40px #0f0,0 0 80px #0f0,0 0 120px #0f0; }
     }
@@ -144,7 +161,6 @@
     
     .btn:hover { background:#00d900; transform:scale(1.05) translateY(-2px); box-shadow:0 6px 20px rgba(0,255,65,0.5); }
     .btn:active { transform:scale(0.98); }
-    .btn:disabled { background:#444; cursor:not-allowed; opacity:0.6; box-shadow:none; }
     .btn.discord { background:#5865F2; color:#fff; }
     .btn.discord:hover { background:#4752C4; }
     
@@ -167,14 +183,6 @@
       border:1px solid rgba(0,255,65,0.3);
     }
     
-    .timer {
-      font-size:clamp(0.85rem,2.5vw,1.1rem);
-      color:#ff0066;
-      margin-top:clamp(15px,3vw,22px);
-      font-weight:bold;
-      text-shadow:0 0 8px #ff0066;
-    }
-    
     .notification {
       position:fixed;
       top:clamp(12px,2.5vw,25px);
@@ -193,28 +201,11 @@
       word-wrap:break-word;
     }
     
-    .hwid-info {
-      margin-top:15px;
-      font-size:clamp(0.7rem,1.8vw,0.85rem);
-      opacity:0.7;
-      font-style:italic;
-    }
-    
-    .debug-info {
-      background:rgba(255,0,0,0.1);
-      border:1px solid #f00;
-      padding:10px;
-      margin-top:15px;
-      border-radius:8px;
-      font-size:0.75rem;
-      text-align:left;
-      color:#ff5555;
-    }
-    
     @media screen and (max-width:480px) {
       html { font-size:13px; }
       .container { padding:18px 15px; }
-      .logo { font-size:2rem; letter-spacing:3px; }
+      .logo-img { width:90px; height:90px; }
+      .logo-text { font-size:2rem; letter-spacing:3px; }
       .key-box { font-size:1.2rem; letter-spacing:2px; padding:18px 10px; }
       .btn { width:100%; margin:8px 0; padding:13px 20px; }
       .step { text-align:center; padding-left:0; }
@@ -226,44 +217,40 @@
   <canvas id="matrix"></canvas>
 
   <div class="container">
-    <h1 class="logo">HAX4L</h1>
+    <!-- Logo Image -->
+    <img src="https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg" 
+         alt="HAX4L Logo" 
+         class="logo-img">
+    
+    <h1 class="logo-text">HAX4L</h1>
     <p class="tagline">PREMIUM KEY SYSTEM</p>
     
     <div class="steps">
-      <div class="step active" id="s1">⚡ Bước 1: Bấm nút lấy key</div>
+      <div class="step active" id="s1">⚡ Bước 1: Vào từ game (bấm LẤY KEY)</div>
       <div class="step" id="s2">🔗 Bước 2: Vượt link4m (10 giây)</div>
-      <div class="step" id="s3">🎯 Bước 3: Nhận key & dùng script</div>
+      <div class="step" id="s3">🎯 Bước 3: Copy key & dán vào game</div>
     </div>
 
     <div class="key-box" id="keyBox">
-      BẤM NÚT DƯỚI ĐỂ LẤY KEY
+      ĐANG TẢI KEY...
     </div>
 
-    <button class="btn" id="getBtn" onclick="getKey()">🔑 LẤY KEY NGAY</button>
-    <button class="btn" id="copyBtn" onclick="copyKey()" style="display:none;">📋 COPY KEY</button>
+    <button class="btn" id="copyBtn" onclick="copyKey()">📋 COPY KEY</button>
     <button class="btn discord" onclick="window.open('https://discord.gg/hax4l','_blank')">💬 DISCORD</button>
 
     <div class="info">
-      ✅ <strong>Mỗi máy 1 key riêng</strong> (HWID-based)<br>
-      ✅ <strong>Mỗi ngày key khác nhau</strong><br>
+      ✅ <strong>Key nào cũng nhập được</strong><br>
+      ✅ <strong>Mỗi lần lấy → Key mới khác nhau 100%</strong><br>
       ✅ Thời gian: <strong>24 giờ</strong> từ lúc kích hoạt<br>
       📌 Script loadstring:<br>
       <code>loadstring(game:HttpGet("https://raw.githubusercontent.com/hax4l/Hax4L/main/script.lua"))()</code>
-      <div class="hwid-info" id="hwidInfo">Đang phát hiện máy...</div>
     </div>
-    
-    <div class="timer">⏰ Key mới sau: <span id="countdown">--:--:--</span></div>
-    
-    <!-- Debug info -->
-    <div class="debug-info" id="debugInfo" style="display:none;"></div>
   </div>
 
   <div class="notification" id="notification">✅ THÔNG BÁO</div>
 
 <script>
-const LINK4M_API_TOKEN = "69bf87bdf47f6d1d8a4b60a3";
 let currentKey = "";
-let userHWID = "";
 
 // Matrix Rain
 const canvas = document.getElementById('matrix');
@@ -292,88 +279,52 @@ function drawMatrix() {
 }
 setInterval(drawMatrix, 35);
 
-// Generate Key từ HWID + Ngày (GIỐNG HỆT SCRIPT LUA)
-function generateKeyFromHWID(hwid) {
-  const today = new Date().toISOString().split('T')[0];
-  const combined = hwid + today;
-  
-  let hash = 0;
-  for(let i = 0; i < combined.length; i++) {
-    hash = ((hash * 32) - hash) + combined.charCodeAt(i);
-    hash = hash % 2147483647;
-  }
-  
+// Generate Unique Key
+function generateUniqueKey() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const timestamp = Date.now().toString(36).toUpperCase();
   let key = "HAX4L-";
-  for(let i = 0; i < 12; i++) {
-    if(i > 0 && i % 4 === 0) key += "-";
-    const index = Math.abs((hash + i * 13) % chars.length);
-    key += chars[index];
+  
+  let part1 = "";
+  for(let i = 0; i < 4; i++) {
+    const idx = (timestamp.charCodeAt(i % timestamp.length) + i) % chars.length;
+    part1 += chars[idx];
   }
   
+  let part2 = "";
+  for(let i = 0; i < 4; i++) {
+    part2 += chars[Math.floor(Math.random() * chars.length)];
+  }
+  
+  let part3 = "";
+  for(let i = 0; i < 4; i++) {
+    part3 += chars[Math.floor(Math.random() * chars.length)];
+  }
+  
+  key += part1 + "-" + part2 + "-" + part3;
   return key;
 }
 
-// Init - Kiểm tra URL params
+// Init
 window.addEventListener('DOMContentLoaded', function() {
   const urlParams = new URLSearchParams(window.location.search);
-  const keyFromUrl = urlParams.get('key');
-  const hwidFromUrl = urlParams.get('hwid');
-  const dateFromUrl = urlParams.get('date');
-  const today = new Date().toISOString().split('T')[0];
+  const verified = urlParams.get('verified');
   
-  // Debug info
-  const debugInfo = document.getElementById('debugInfo');
-  debugInfo.innerHTML = `
-    <strong>DEBUG INFO:</strong><br>
-    Key từ URL: ${keyFromUrl || 'Không có'}<br>
-    HWID từ URL: ${hwidFromUrl || 'Không có'}<br>
-    Date từ URL: ${dateFromUrl || 'Không có'}<br>
-    Date hiện tại: ${today}
-  `;
-  debugInfo.style.display = 'block';
-  
-  if (keyFromUrl && hwidFromUrl && dateFromUrl) {
-    userHWID = hwidFromUrl;
-    document.getElementById('hwidInfo').textContent = `ID máy: ${userHWID.substring(0, 12)}...`;
-    
-    // Tạo lại key để so sánh
-    const expectedKey = generateKeyFromHWID(userHWID);
-    
-    debugInfo.innerHTML += `<br>Key mong đợi: ${expectedKey}<br>Key nhận được: ${keyFromUrl}`;
-    
-    if (keyFromUrl === expectedKey && dateFromUrl === today) {
-      // Key hợp lệ
-      currentKey = keyFromUrl;
-      document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Key hợp lệ cho máy này hôm nay!</small>`;
-      document.getElementById('getBtn').style.display = 'none';
-      document.getElementById('copyBtn').style.display = 'inline-block';
-      document.getElementById('s1').classList.add('completed');
-      document.getElementById('s1').classList.remove('active');
-      document.getElementById('s2').classList.add('completed');
-      document.getElementById('s2').classList.remove('active');
-      document.getElementById('s3').classList.add('completed', 'active');
-      showNotification("✅ Key dành riêng cho máy bạn!");
-      debugInfo.style.display = 'none';
-    } else if (dateFromUrl !== today) {
-      // Key hết hạn (ngày khác)
-      showNotification("❌ Key đã hết hạn (ngày khác)!");
-      document.getElementById('keyBox').innerHTML = "⏰ KEY ĐÃ HẾT HẠN<br><small>Mỗi ngày cần lấy key mới</small>";
-    } else {
-      // Key không khớp
-      showNotification("❌ Key không hợp lệ!");
-      document.getElementById('keyBox').innerHTML = "❌ KEY KHÔNG HỢP LỆ<br><small>Lấy key mới cho máy này</small>";
-    }
+  if (verified === 'true') {
+    currentKey = generateUniqueKey();
+    document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Copy key này và dán vào game!</small>`;
+    document.getElementById('s1').classList.add('completed');
+    document.getElementById('s1').classList.remove('active');
+    document.getElementById('s2').classList.add('completed');
+    document.getElementById('s2').classList.remove('active');
+    document.getElementById('s3').classList.add('completed', 'active');
+    showNotification("✅ Key mới đã được tạo! Copy ngay!");
+    setTimeout(() => copyKey(), 2000);
   } else {
-    // Không có params → người dùng mới
-    document.getElementById('hwidInfo').textContent = "Chưa có HWID (chờ vượt link)";
+    document.getElementById('keyBox').innerHTML = "⚠️ VUI LÒNG VÀO TỪ GAME<br><small>Mở Roblox → Chạy script → Bấm 'LẤY KEY'</small>";
+    showNotification("⚠️ Vui lòng lấy key từ trong game!");
   }
 });
-
-// Get Key
-function getKey() {
-  alert("⚠️ QUAN TRỌNG!\n\nBạn cần lấy key TỪ TRONG GAME (Roblox)!\n\n1. Mở Roblox\n2. Chạy script\n3. Bấm nút 'LẤY KEY' trong game\n4. Sẽ tự động mở trang này với key!");
-}
 
 // Copy Key
 function copyKey() {
@@ -383,7 +334,7 @@ function copyKey() {
   }
   
   navigator.clipboard.writeText(currentKey).then(() => {
-    showNotification("✅ Đã copy: " + currentKey);
+    showNotification("✅ Đã copy key: " + currentKey);
   }).catch(() => {
     const tempInput = document.createElement('input');
     tempInput.value = currentKey;
@@ -391,31 +342,16 @@ function copyKey() {
     tempInput.select();
     document.execCommand('copy');
     document.body.removeChild(tempInput);
-    showNotification("✅ Đã copy: " + currentKey);
+    showNotification("✅ Đã copy key: " + currentKey);
   });
 }
 
-// Notification
 function showNotification(text) {
   const notif = document.getElementById('notification');
   notif.textContent = text;
   notif.style.opacity = 1;
   setTimeout(() => notif.style.opacity = 0, 4000);
 }
-
-// Countdown
-function updateCountdown() {
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setHours(24, 0, 0, 0);
-  const diff = tomorrow - now;
-  const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
-  const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-  const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-  document.getElementById('countdown').textContent = `${hours}:${minutes}:${seconds}`;
-}
-setInterval(updateCountdown, 1000);
-updateCountdown();
 </script>
 </body>
 </html>
