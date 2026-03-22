@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HAX4L - Premium Key System</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
+    
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { font-size:14px; }
+    
+    body {
+      background:#000;
+      color:#0f0;
+      font-family:'Orbitron',sans-serif;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow-x:hidden;
+      background:radial-gradient(circle at center,#001a00,#000);
+      padding:15px;
+    }
+    
+    canvas {
+      position:fixed;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      z-index:1;
+      pointer-events:none;
+    }
+    
+    .container {
+      background:rgba(0,20,0,0.95);
+      padding:clamp(20px,4vw,50px);
+      border-radius:clamp(12px,2.5vw,20px);
+      border:clamp(2px,0.4vw,4px) solid #0f0;
+      box-shadow:0 0 clamp(40px,8vw,80px) rgba(0,255,65,0.6);
+      text-align:center;
+      width:100%;
+      max-width:650px;
+      position:relative;
+      z-index:10;
+      animation:slideIn 0.8s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from { opacity:0; transform:translateY(-50px); }
+      to { opacity:1; transform:translateY(0); }
+    }
+    
+    .logo {
+      font-size:clamp(2rem,7vw,3.5rem);
+      font-weight:900;
+      margin-bottom:clamp(5px,1.5vw,10px);
+      text-shadow:0 0 clamp(20px,5vw,35px) #0f0;
+      letter-spacing:clamp(3px,1vw,8px);
+      animation:pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%,100% { text-shadow:0 0 20px #0f0,0 0 40px #0f0; }
+      50% { text-shadow:0 0 40px #0f0,0 0 80px #0f0,0 0 120px #0f0; }
+    }
+    
+    .tagline {
+      font-size:clamp(0.85rem,2.5vw,1.2rem);
+      opacity:0.95;
+      margin:clamp(5px,1.5vw,12px) 0;
+      letter-spacing:clamp(1px,0.3vw,3px);
+    }
+    
+    .steps {
+      margin:clamp(18px,4vw,30px) 0;
+      padding:clamp(12px,2.5vw,20px);
+      background:rgba(0,60,0,0.4);
+      border-radius:clamp(10px,2vw,15px);
+      border:2px solid rgba(0,255,65,0.4);
+    }
+    
+    .step {
+      font-size:clamp(0.8rem,2.2vw,1rem);
+      margin:clamp(6px,1.5vw,10px) 0;
+      opacity:0.65;
+      transition:all 0.4s;
+      text-align:left;
+      padding-left:clamp(8px,2vw,15px);
+    }
+    
+    .step.active { color:#0f0; font-weight:bold; opacity:1; transform:translateX(5px); }
+    .step.completed { color:#0f0; opacity:1; }
+    .step.completed::before { content:"✓ "; font-weight:bold; margin-right:5px; }
+    
+    .key-box {
+      background:#000;
+      padding:clamp(15px,3.5vw,28px);
+      border:3px dashed #0f0;
+      border-radius:clamp(10px,2vw,15px);
+      font-size:clamp(1.1rem,3.5vw,1.8rem);
+      letter-spacing:clamp(2px,0.8vw,6px);
+      margin:clamp(20px,4vw,35px) 0;
+      min-height:clamp(70px,12vw,100px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      animation:glow 2.5s infinite alternate;
+      word-break:break-all;
+      line-height:1.4;
+    }
+    
+    @keyframes glow {
+      from { box-shadow:0 0 20px #0f0,inset 0 0 10px rgba(0,255,65,0.2); }
+      to { box-shadow:0 0 50px #0f0,0 0 70px #0f0,inset 0 0 25px rgba(0,255,65,0.3); }
+    }
+    
+    .key-box small {
+      font-size:clamp(0.7rem,1.8vw,0.95rem);
+      margin-top:10px;
+      opacity:0.85;
+      font-weight:normal;
+    }
+    
+    .btn {
+      background:#0f0;
+      color:#000;
+      padding:clamp(10px,2.5vw,16px) clamp(25px,6vw,50px);
+      font-size:clamp(0.85rem,2.5vw,1.2rem);
+      border:none;
+      border-radius:50px;
+      cursor:pointer;
+      margin:clamp(8px,1.8vw,12px);
+      font-weight:900;
+      transition:all 0.35s;
+      font-family:'Orbitron',sans-serif;
+      text-transform:uppercase;
+      letter-spacing:clamp(1px,0.3vw,3px);
+      box-shadow:0 4px 12px rgba(0,255,65,0.3);
+    }
+    
+    .btn:hover { background:#00d900; transform:scale(1.05) translateY(-2px); box-shadow:0 6px 20px rgba(0,255,65,0.5); }
+    .btn:active { transform:scale(0.98); }
+    .btn:disabled { background:#444; cursor:not-allowed; opacity:0.6; box-shadow:none; }
+    .btn.discord { background:#5865F2; color:#fff; }
+    .btn.discord:hover { background:#4752C4; }
+    
+    .info {
+      margin-top:clamp(18px,4vw,30px);
+      font-size:clamp(0.75rem,2vw,0.95rem);
+      line-height:1.8;
+      opacity:0.92;
+    }
+    
+    .info code {
+      background:rgba(0,40,0,0.9);
+      padding:clamp(3px,1vw,7px) clamp(8px,2vw,14px);
+      border-radius:5px;
+      font-family:'Courier New',monospace;
+      font-size:clamp(0.65rem,1.8vw,0.85rem);
+      word-break:break-all;
+      display:inline-block;
+      margin:6px 0;
+      border:1px solid rgba(0,255,65,0.3);
+    }
+    
+    .timer {
+      font-size:clamp(0.85rem,2.5vw,1.1rem);
+      color:#ff0066;
+      margin-top:clamp(15px,3vw,22px);
+      font-weight:bold;
+      text-shadow:0 0 8px #ff0066;
+    }
+    
+    .notification {
+      position:fixed;
+      top:clamp(12px,2.5vw,25px);
+      right:clamp(12px,2.5vw,25px);
+      background:#0f0;
+      color:#000;
+      padding:clamp(10px,2vw,16px) clamp(18px,4vw,32px);
+      border-radius:clamp(8px,2vw,14px);
+      font-weight:bold;
+      font-size:clamp(0.8rem,2.2vw,1.05rem);
+      opacity:0;
+      transition:opacity 0.6s;
+      z-index:1000;
+      box-shadow:0 0 clamp(20px,5vw,35px) rgba(0,255,65,0.8);
+      max-width:90%;
+      word-wrap:break-word;
+    }
+    
+    .hwid-info {
+      margin-top:15px;
+      font-size:clamp(0.7rem,1.8vw,0.85rem);
+      opacity:0.7;
+      font-style:italic;
+    }
+    
+    @media screen and (max-width:480px) {
+      html { font-size:13px; }
+      .container { padding:18px 15px; }
+      .logo { font-size:2rem; letter-spacing:3px; }
+      .key-box { font-size:1.2rem; letter-spacing:2px; padding:18px 10px; }
+      .btn { width:100%; margin:8px 0; padding:13px 20px; }
+      .step { text-align:center; padding-left:0; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="matrix"></canvas>
+
+  <div class="container">
+    <h1 class="logo">HAX4L</h1>
+    <p class="tagline">PREMIUM KEY SYSTEM</p>
+    
+    <div class="steps">
+      <div class="step active" id="s1">⚡ Bước 1: Bấm nút lấy key</div>
+      <div class="step" id="s2">🔗 Bước 2: Vượt link4m (10 giây)</div>
+      <div class="step" id="s3">🎯 Bước 3: Nhận key & dùng script</div>
+    </div>
+
+    <div class="key-box" id="keyBox">
+      BẤM NÚT DƯỚI ĐỂ LẤY KEY
+    </div>
+
+    <button class="btn" id="getBtn" onclick="getKey()">🔑 LẤY KEY NGAY</button>
+    <button class="btn" id="copyBtn" onclick="copyKey()" style="display:none;">📋 COPY KEY</button>
+    <button class="btn discord" onclick="window.open('https://discord.gg/hax4l','_blank')">💬 DISCORD</button>
+
+    <div class="info">
+      ✅ <strong>Mỗi máy 1 key riêng</strong> (HWID-based)<br>
+      ✅ <strong>Mỗi ngày key khác nhau</strong><br>
+      ✅ Thời gian: <strong>24 giờ</strong> từ lúc kích hoạt<br>
+      📌 Script loadstring:<br>
+      <code>loadstring(game:HttpGet("https://raw.githubusercontent.com/yourusername/hax4l/main/script.lua"))()</code>
+      <div class="hwid-info" id="hwidInfo">Đang phát hiện máy...</div>
+    </div>
+    
+    <div class="timer">⏰ Key mới sau: <span id="countdown">--:--:--</span></div>
+  </div>
+
+  <div class="notification" id="notification">✅ THÔNG BÁO</div>
+
+<script>
+const LINK4M_API_TOKEN = "69bf87bdf47f6d1d8a4b60a3";
+let currentKey = "";
+let userHWID = "";
+
+// Matrix Rain
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+const letters = 'HAX4L0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const fontSize = Math.max(10, Math.min(14, window.innerWidth / 80));
+const columns = Math.floor(canvas.width / fontSize);
+const drops = Array(columns).fill(1);
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#0f0';
+  ctx.font = fontSize + 'px monospace';
+  for (let i = 0; i < drops.length; i++) {
+    const text = letters[Math.floor(Math.random() * letters.length)];
+    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  }
+}
+setInterval(drawMatrix, 35);
+
+// Generate HWID
+async function generateHWID() {
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  const fingerprint = {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    platform: navigator.platform,
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    deviceMemory: navigator.deviceMemory || 0,
+    screenResolution: `${screen.width}x${screen.height}`,
+    colorDepth: screen.colorDepth,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    webglVendor: gl ? gl.getParameter(gl.VENDOR) : '',
+    webglRenderer: gl ? gl.getParameter(gl.RENDERER) : ''
+  };
+  const fingerprintString = JSON.stringify(fingerprint);
+  let hash = 0;
+  for (let i = 0; i < fingerprintString.length; i++) {
+    const char = fingerprintString.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  const hwid = Math.abs(hash).toString(16).toUpperCase().padStart(12, '0');
+  return hwid;
+}
+
+// Generate Key từ HWID + Ngày
+function generateKeyFromHWID(hwid) {
+  const today = new Date().toISOString().split('T')[0];
+  const combined = hwid + today;
+  let hash = 0;
+  for(let i = 0; i < combined.length; i++) {
+    hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let key = "HAX4L-";
+  for(let i = 0; i < 12; i++) {
+    if(i > 0 && i % 4 === 0) key += "-";
+    const index = Math.abs((hash + i * 13) % chars.length);
+    key += chars[index];
+  }
+  return key;
+}
+
+// Init
+window.addEventListener('DOMContentLoaded', async function() {
+  userHWID = await generateHWID();
+  document.getElementById('hwidInfo').textContent = `ID máy: ${userHWID.substring(0, 8)}...`;
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const keyFromUrl = urlParams.get('key');
+  const hwidFromUrl = urlParams.get('hwid');
+  const dateFromUrl = urlParams.get('date');
+  const today = new Date().toISOString().split('T')[0];
+  
+  if (keyFromUrl && hwidFromUrl === userHWID && dateFromUrl === today) {
+    currentKey = keyFromUrl;
+    document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Key hợp lệ cho máy này hôm nay</small>`;
+    document.getElementById('getBtn').style.display = 'none';
+    document.getElementById('copyBtn').style.display = 'inline-block';
+    document.getElementById('s1').classList.add('completed');
+    document.getElementById('s1').classList.remove('active');
+    document.getElementById('s2').classList.add('completed');
+    document.getElementById('s2').classList.remove('active');
+    document.getElementById('s3').classList.add('completed', 'active');
+    showNotification("✅ Key dành riêng cho máy bạn!");
+  } else if (keyFromUrl) {
+    showNotification("❌ Key không hợp lệ hoặc đã hết hạn!");
+    document.getElementById('keyBox').innerHTML = "❌ KEY KHÔNG HỢP LỆ<br><small>Lấy key mới cho máy này</small>";
+  }
+});
+
+// Get Key
+function getKey() {
+  const btn = document.getElementById('getBtn');
+  const keyBox = document.getElementById('keyBox');
+  btn.disabled = true;
+  btn.textContent = "⏳ ĐANG TẠO...";
+  keyBox.innerHTML = "⏳ Đang tạo key riêng...<br><small>Vui lòng đợi...</small>";
+
+  currentKey = generateKeyFromHWID(userHWID);
+  const today = new Date().toISOString().split('T')[0];
+  const currentUrl = window.location.href.split('?')[0];
+  const destinationUrl = currentUrl + "?key=" + encodeURIComponent(currentKey) + "&hwid=" + encodeURIComponent(userHWID) + "&date=" + encodeURIComponent(today);
+  const shortLink = `https://link4m.co/st?api=${LINK4M_API_TOKEN}&url=${encodeURIComponent(destinationUrl)}`;
+  
+  setTimeout(() => {
+    keyBox.innerHTML = `✅ KEY RIÊNG CHO MÁY BẠN!<br><small>Bấm nút để vượt link</small>`;
+    document.getElementById('s1').classList.remove('active');
+    document.getElementById('s1').classList.add('completed');
+    document.getElementById('s2').classList.add('active');
+    btn.disabled = false;
+    btn.textContent = "🚀 VƯỢT LINK4M";
+    btn.onclick = function() {
+      window.open(shortLink, '_blank');
+      keyBox.innerHTML = "⏳ Chờ vượt link...<br><small>Key chỉ dùng được trên máy này!</small>";
+      showNotification("Key hôm nay riêng cho máy bạn!");
+    };
+  }, 800);
+}
+
+// Copy Key
+function copyKey() {
+  if (!currentKey) return;
+  navigator.clipboard.writeText(currentKey).then(() => {
+    showNotification("✅ Đã copy: " + currentKey);
+  }).catch(() => {
+    const tempInput = document.createElement('input');
+    tempInput.value = currentKey;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+    showNotification("✅ Đã copy: " + currentKey);
+  });
+}
+
+// Notification
+function showNotification(text) {
+  const notif = document.getElementById('notification');
+  notif.textContent = text;
+  notif.style.opacity = 1;
+  setTimeout(() => notif.style.opacity = 0, 4000);
+}
+
+// Countdown
+function updateCountdown() {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setHours(24, 0, 0, 0);
+  const diff = tomorrow - now;
+  const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
+  const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+  const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+  document.getElementById('countdown').textContent = `${hours}:${minutes}:${seconds}`;
+}
+setInterval(updateCountdown, 1000);
+updateCountdown();
+</script>
+</body>
+</html>
