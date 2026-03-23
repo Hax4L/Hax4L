@@ -1,39 +1,23 @@
 --[[
 ╔════════════════════════════════════════════════════════╗
-║                                                        ║
-║              🔥 HAX4L — KEY SYSTEM                     ║
-║                                                        ║
-║   Luồng:                                               ║
-║   Script tạo key → Link4m rút gọn → User vượt link    ║
-║   → Trang web hiện key → User copy → Dán vào script   ║
-║   → Ghi nhớ HWID → Lần sau auto-login                 ║
-║                                                        ║
-║   ⚠️ THAY ĐỔI CÁC URL BÊN DƯỚI!                      ║
-║                                                        ║
+║              🔥 HAX4L — KEY SYSTEM v3                  ║
+║          ✅ Auto-Login 100% — Viết lại hoàn toàn       ║
 ╚════════════════════════════════════════════════════════╝
 ]]
 
+task.spawn(function()
+
 -- ════════════════════════════════════════
---  ⚙️ CẤU HÌNH (THAY ĐỔI!)
+--  ⚙️ CẤU HÌNH
 -- ════════════════════════════════════════
 local CONFIG = {
-    -- 🔗 URL trang GitHub Pages (CHỈ 1 TRANG index.html)
-    CALLBACK_URL = "https://hax4l.github.io/Hax4L/",
-
-    -- 🔗 Link4m API token
-    API_TOKEN    = "69bf87bdf47f6d1d8a4b60a3",
-
-    -- 🔗 Script chính load khi key đúng
-    SCRIPT_URL   = "https://github.com/LeafHubAcademy/LeafHub/raw/refs/heads/main/Leaf.lua",
-
-    -- 🔐 Secret (phải giống JavaScript)
-    SECRET       = "HAX4L_PR1V4T3_S3CR3T_2025",
-
-    -- 💾 File lưu session
-    SAVE_FILE    = "Hax4L_Session.json",
-
-    -- 🖼 Avatar Roblox Asset ID (upload ảnh lên Roblox → lấy ID)
-    AVATAR_ASSET = "rbxassetid://0",
+    CALLBACK_URL     = "https://hax4l.github.io/Hax4L/",
+    API_TOKEN        = "69bf87bdf47f6d1d8a4b60a3",
+    SCRIPT_URL       = "https://github.com/LeafHubAcademy/LeafHub/raw/refs/heads/main/Leaf.lua",
+    SECRET           = "HAX4L_PR1V4T3_S3CR3T_2025",
+    SAVE_FILE        = "Hax4L_Session.json",
+    AVATAR_ASSET     = "rbxassetid://0",
+    AUTO_LOGIN_DELAY = 3,
 }
 
 -- ════════════════════════════════════════
@@ -43,11 +27,42 @@ local Players          = game:GetService("Players")
 local HttpService      = game:GetService("HttpService")
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-
-local player = Players.LocalPlayer
+local player           = Players.LocalPlayer
 
 -- ════════════════════════════════════════
---  🔐 DJB2 HASH (giống JS)
+--  🐛 DEBUG
+-- ════════════════════════════════════════
+local function log(msg)
+    warn("[Hax4L] " .. msg)
+end
+
+-- ════════════════════════════════════════
+--  🧪 TEST FILE I/O THẬT
+-- ════════════════════════════════════════
+local CAN_SAVE_FILE = false
+do
+    local testFile = "_hax4l_io_test.tmp"
+    local testData = "hax4l_test_" .. tostring(os.time())
+    local ok = pcall(function()
+        writefile(testFile, testData)
+        local read = readfile(testFile)
+        assert(read == testData, "Dữ liệu đọc không khớp")
+    end)
+    if ok then
+        CAN_SAVE_FILE = true
+        pcall(function()
+            if typeof(delfile) == "function" then
+                delfile(testFile)
+            end
+        end)
+        log("✅ File I/O hoạt động — Auto-login sẽ lưu file")
+    else
+        log("⚠️ File I/O KHÔNG hoạt động — Dùng _G backup")
+    end
+end
+
+-- ════════════════════════════════════════
+--  🔐 DJB2 HASH
 -- ════════════════════════════════════════
 local function djb2(str)
     local h = 5381
@@ -61,114 +76,136 @@ end
 --  🔑 KEY FUNCTIONS
 -- ════════════════════════════════════════
 local function generateKey()
-    local ts = os.time()
+    local ts    = os.time()
     local tsHex = string.format("%08X", ts)
-
-    -- Random 4 bytes
-    local rndBytes = {}
-    for i = 1, 4 do
-        rndBytes[i] = string.format("%02X", math.random(0, 255))
-    end
-    local rndHex = table.concat(rndBytes)
-
-    -- Checksum
+    local rnd   = {}
+    for i = 1, 4 do rnd[i] = string.format("%02X", math.random(0, 255)) end
+    local rndHex = table.concat(rnd)
     local chkHex = string.format("%08X", djb2(tsHex .. rndHex .. CONFIG.SECRET))
-
     return "HAX4L-" .. tsHex .. "-" .. rndHex .. "-" .. chkHex
 end
 
 local function verifyKey(key)
-    if not key or key == "" then return false, "Không có key" end
+    if not key or key == "" then return false, "Không có key", 0 end
     key = string.upper(key:gsub("%s+", ""))
 
     local parts = {}
     for part in key:gmatch("[^%-]+") do parts[#parts + 1] = part end
 
-    if #parts ~= 4 or parts[1] ~= "HAX4L" then return false, "Sai định dạng" end
-    if #parts[2] ~= 8 or #parts[3] ~= 8 or #parts[4] ~= 8 then return false, "Sai độ dài" end
+    if #parts ~= 4 or parts[1] ~= "HAX4L" then return false, "Sai định dạng", 0 end
+    if #parts[2] ~= 8 or #parts[3] ~= 8 or #parts[4] ~= 8 then return false, "Sai độ dài", 0 end
 
     local expected = string.format("%08X", djb2(parts[2] .. parts[3] .. CONFIG.SECRET))
-    if parts[4] ~= expected then return false, "Key giả mạo" end
+    if parts[4] ~= expected then return false, "Key giả mạo", 0 end
 
     local ts = tonumber(parts[2], 16)
-    if not ts then return false, "Timestamp lỗi" end
+    if not ts then return false, "Timestamp lỗi", 0 end
 
     local now = os.time()
-    if now - ts > 86400 then return false, "Hết hạn" end
-    if ts > now + 300 then return false, "Không hợp lệ" end
+    if now - ts > 86400 then return false, "Hết hạn", 0 end
+    if ts > now + 300 then return false, "Không hợp lệ", 0 end
 
     local remain = 86400 - (now - ts)
     local rH = math.floor(remain / 3600)
     local rM = math.floor((remain % 3600) / 60)
-    return true, string.format("Còn %dh %dm", rH, rM)
+    return true, string.format("Còn %dh %dm", rH, rM), remain
 end
 
 -- ════════════════════════════════════════
 --  🆔 HWID
 -- ════════════════════════════════════════
-local function getHWID()
-    local fns = {
-        function() return gethwid() end,
-        function() return getdeviceid() end,
-        function() return getfingerprint() end,
+local HWID
+do
+    local methods = {
+        function() return gethwid and gethwid() end,
+        function() return getdeviceid and getdeviceid() end,
+        function() return getfingerprint and getfingerprint() end,
         function() return game:GetService("RbxAnalyticsService"):GetClientId() end,
     }
-    for _, fn in ipairs(fns) do
+    for _, fn in ipairs(methods) do
         local ok, r = pcall(fn)
-        if ok and r and tostring(r) ~= "" then return tostring(r) end
+        if ok and r and tostring(r) ~= "" then
+            HWID = tostring(r)
+            break
+        end
     end
-    return "UID_" .. tostring(player.UserId)
+    HWID = HWID or ("UID_" .. tostring(player.UserId))
+    log("🆔 HWID: " .. string.sub(HWID, 1, 25) .. "...")
 end
 
-local HWID = getHWID()
-
 -- ════════════════════════════════════════
---  💾 SESSION (SAVE / LOAD)
+--  💾 SESSION SAVE/LOAD/CLEAR
+--  2 backend: File + _G
 -- ════════════════════════════════════════
 local function saveSession(key)
-    pcall(function()
-        writefile(CONFIG.SAVE_FILE, HttpService:JSONEncode({
-            key = key, hwid = HWID, time = os.time()
-        }))
-    end)
+    local data = {key = key, hwid = HWID, time = os.time()}
+
+    -- Backend 1: _G (luôn hoạt động)
+    _G.__HAX4L_SESSION = data
+    log("💾 Saved to _G")
+
+    -- Backend 2: File
+    if CAN_SAVE_FILE then
+        local ok, err = pcall(function()
+            writefile(CONFIG.SAVE_FILE, HttpService:JSONEncode(data))
+        end)
+        if ok then
+            log("💾 Saved to file: " .. CONFIG.SAVE_FILE)
+        else
+            log("❌ File save failed: " .. tostring(err))
+        end
+    end
 end
 
 local function loadSession()
-    local ok, raw = pcall(function() return readfile(CONFIG.SAVE_FILE) end)
-    if not ok or not raw then return nil end
-    local ok2, data = pcall(function() return HttpService:JSONDecode(raw) end)
-    if not ok2 or not data then return nil end
-    return data
+    -- Backend 1: File (ưu tiên — tồn tại giữa các session)
+    if CAN_SAVE_FILE then
+        local ok, raw = pcall(function()
+            if typeof(isfile) == "function" and not isfile(CONFIG.SAVE_FILE) then
+                return nil
+            end
+            return readfile(CONFIG.SAVE_FILE)
+        end)
+        if ok and raw and raw ~= "" then
+            local ok2, data = pcall(function()
+                return HttpService:JSONDecode(raw)
+            end)
+            if ok2 and data and data.key and data.hwid then
+                log("📂 Loaded from FILE — key: " .. string.sub(data.key, 1, 18) .. "...")
+                return data
+            end
+        end
+    end
+
+    -- Backend 2: _G
+    if _G.__HAX4L_SESSION and _G.__HAX4L_SESSION.key then
+        log("📂 Loaded from _G")
+        return _G.__HAX4L_SESSION
+    end
+
+    log("📂 No session found")
+    return nil
 end
 
 local function clearSession()
-    pcall(function() delfile(CONFIG.SAVE_FILE) end)
-end
-
--- ════════════════════════════════════════
---  🔄 AUTO-LOGIN
--- ════════════════════════════════════════
-local session = loadSession()
-if session and session.hwid == HWID then
-    local valid = verifyKey(session.key)
-    if valid then
-        loadstring(game:HttpGet(CONFIG.SCRIPT_URL))()
-        return
+    _G.__HAX4L_SESSION = nil
+    if CAN_SAVE_FILE then
+        pcall(function()
+            if typeof(delfile) == "function" then
+                delfile(CONFIG.SAVE_FILE)
+            else
+                writefile(CONFIG.SAVE_FILE, "")
+            end
+        end)
     end
-    clearSession()
-elseif session then
-    clearSession()
+    log("🗑️ Session cleared")
 end
 
 -- ════════════════════════════════════════
---  Chưa auto-login → Hiện GUI
+--  🎨 GUI HELPERS
 -- ════════════════════════════════════════
 math.randomseed(os.time())
 
-local oldGui = player.PlayerGui:FindFirstChild("Hax4LKeySystem")
-if oldGui then oldGui:Destroy() end
-
--- Helpers
 local function create(cls, props, par)
     local inst = Instance.new(cls)
     for k, v in pairs(props) do inst[k] = v end
@@ -176,7 +213,9 @@ local function create(cls, props, par)
     return inst
 end
 
-local function corner(p, r) return create("UICorner", {CornerRadius = UDim.new(0, r or 12)}, p) end
+local function corner(p, r)
+    return create("UICorner", {CornerRadius = UDim.new(0, r or 12)}, p)
+end
 
 local C = {
     card     = Color3.fromRGB(10, 10, 22),
@@ -191,17 +230,374 @@ local C = {
     dim      = Color3.fromRGB(80, 80, 110),
     input    = Color3.fromRGB(18, 18, 32),
     inputBdr = Color3.fromRGB(40, 40, 60),
+    cyan     = Color3.fromRGB(34, 211, 238),
 }
 
--- ScreenGui
-local Gui = create("ScreenGui", {
-    Name = "Hax4LKeySystem",
-    ResetOnSpawn = false,
-    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-}, nil)
-pcall(function() if syn and syn.protect_gui then syn.protect_gui(Gui) end end)
-pcall(function() if gethui then Gui.Parent = gethui() return end end)
-if not Gui.Parent then Gui.Parent = player:WaitForChild("PlayerGui") end
+local function makeGui(name)
+    -- Xoá GUI cũ
+    for _, g in ipairs(player.PlayerGui:GetChildren()) do
+        if g.Name == name then g:Destroy() end
+    end
+    pcall(function()
+        if gethui then
+            for _, g in ipairs(gethui():GetChildren()) do
+                if g.Name == name then g:Destroy() end
+            end
+        end
+    end)
+
+    local gui = create("ScreenGui", {
+        Name = name,
+        ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    }, nil)
+    pcall(function() if syn and syn.protect_gui then syn.protect_gui(gui) end end)
+
+    local parented = false
+    pcall(function()
+        if gethui then gui.Parent = gethui(); parented = true end
+    end)
+    if not parented then
+        gui.Parent = player:WaitForChild("PlayerGui")
+    end
+    return gui
+end
+
+local function loadMainScript()
+    log("🚀 Loading main script...")
+    local ok, err = pcall(function()
+        loadstring(game:HttpGet(CONFIG.SCRIPT_URL))()
+    end)
+    if not ok then
+        log("❌ Script load error: " .. tostring(err))
+    end
+end
+
+-- ════════════════════════════════════════════════════════
+--  🔄 BƯỚC 1: KIỂM TRA AUTO-LOGIN
+-- ════════════════════════════════════════════════════════
+log("═══════════════════════════════════")
+log("🚀 HAX4L KEY SYSTEM v3 — Khởi động")
+log("═══════════════════════════════════")
+
+local session = loadSession()
+local needKeyGui = true  -- mặc định cần hiện GUI nhập key
+
+if session then
+    if session.hwid == HWID then
+        local valid, timeMsg, remainSec = verifyKey(session.key)
+        if valid then
+            log("✅ Session hợp lệ! " .. timeMsg)
+
+            -- ═══════════════════════════════════════
+            --  ✅ HIỆN AUTO-LOGIN GUI
+            -- ═══════════════════════════════════════
+            local AutoGui = makeGui("Hax4LAutoLogin")
+            local cancelled = false
+            local wantNewKey = false
+
+            -- Overlay
+            local aOverlay = create("Frame", {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundColor3 = Color3.new(0, 0, 0),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0, ZIndex = 100,
+            }, AutoGui)
+
+            -- Card
+            local aCard = create("Frame", {
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.fromOffset(0, 0),
+                BackgroundColor3 = C.card,
+                BorderSizePixel = 0, ZIndex = 101,
+            }, AutoGui)
+            corner(aCard, 20)
+
+            local aStroke = create("UIStroke", {
+                Color = C.green, Thickness = 2, Transparency = 0.3,
+            }, aCard)
+
+            -- Shadow
+            create("ImageLabel", {
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.new(1, 50, 1, 50),
+                BackgroundTransparency = 1,
+                Image = "rbxassetid://6015897843",
+                ImageColor3 = Color3.new(0, 0, 0),
+                ImageTransparency = 0.3,
+                ScaleType = Enum.ScaleType.Slice,
+                SliceCenter = Rect.new(49, 49, 450, 450),
+                ZIndex = 100,
+            }, aCard)
+
+            -- Title bar
+            local aTBar = create("Frame", {
+                Size = UDim2.new(1, 0, 0, 50),
+                BackgroundColor3 = C.topbar,
+                BorderSizePixel = 0, ZIndex = 102,
+            }, aCard)
+            corner(aTBar, 20)
+            create("Frame", {
+                Size = UDim2.new(1, 0, 0, 20),
+                Position = UDim2.new(0, 0, 1, -20),
+                BackgroundColor3 = C.topbar,
+                BorderSizePixel = 0, ZIndex = 102,
+            }, aTBar)
+
+            local aAvatar = create("ImageLabel", {
+                Size = UDim2.fromOffset(28, 28),
+                Position = UDim2.fromOffset(14, 11),
+                BackgroundColor3 = C.green,
+                BackgroundTransparency = 0.85,
+                Image = CONFIG.AVATAR_ASSET,
+                ScaleType = Enum.ScaleType.Crop,
+                ZIndex = 103,
+            }, aTBar)
+            corner(aAvatar, 8)
+
+            create("TextLabel", {
+                Size = UDim2.new(1, -60, 1, 0),
+                Position = UDim2.fromOffset(50, 0),
+                BackgroundTransparency = 1,
+                Text = "🔄 Hax4L — Auto Login",
+                TextColor3 = C.green,
+                TextSize = 16, Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 103,
+            }, aTBar)
+
+            -- Content
+            local aCnt = create("Frame", {
+                Size = UDim2.new(1, -40, 1, -70),
+                Position = UDim2.fromOffset(20, 60),
+                BackgroundTransparency = 1, ZIndex = 102,
+            }, aCard)
+
+            create("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 40),
+                BackgroundTransparency = 1,
+                Text = "✅", TextSize = 36, ZIndex = 103,
+            }, aCnt)
+
+            create("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 22),
+                Position = UDim2.fromOffset(0, 46),
+                BackgroundTransparency = 1,
+                Text = "Phát hiện key đã lưu!",
+                TextColor3 = C.green,
+                TextSize = 16, Font = Enum.Font.GothamBold,
+                ZIndex = 103,
+            }, aCnt)
+
+            create("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 18),
+                Position = UDim2.fromOffset(0, 72),
+                BackgroundTransparency = 1,
+                Text = "⏱ " .. timeMsg .. "  •  🔒 HWID khớp",
+                TextColor3 = C.dim,
+                TextSize = 12, Font = Enum.Font.Gotham,
+                ZIndex = 103,
+            }, aCnt)
+
+            -- Key ẩn bớt
+            local masked = string.sub(session.key, 1, 14) .. "••••••••••••"
+            create("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 18),
+                Position = UDim2.fromOffset(0, 94),
+                BackgroundTransparency = 1,
+                Text = "🔑 " .. masked,
+                TextColor3 = Color3.fromRGB(50, 50, 70),
+                TextSize = 11, Font = Enum.Font.Code,
+                ZIndex = 103,
+            }, aCnt)
+
+            -- Progress bar
+            local aBarBg = create("Frame", {
+                Size = UDim2.new(1, 0, 0, 6),
+                Position = UDim2.fromOffset(0, 124),
+                BackgroundColor3 = Color3.fromRGB(25, 25, 40),
+                BorderSizePixel = 0, ZIndex = 103,
+            }, aCnt)
+            corner(aBarBg, 3)
+
+            local aBarFill = create("Frame", {
+                Size = UDim2.new(0, 0, 1, 0),
+                BackgroundColor3 = C.green,
+                BorderSizePixel = 0, ZIndex = 104,
+            }, aBarBg)
+            corner(aBarFill, 3)
+
+            -- Countdown text
+            local aCountdown = create("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 20),
+                Position = UDim2.fromOffset(0, 138),
+                BackgroundTransparency = 1,
+                Text = "⚡ Tự động tải trong " .. CONFIG.AUTO_LOGIN_DELAY .. "s...",
+                TextColor3 = C.cyan,
+                TextSize = 13, Font = Enum.Font.GothamBold,
+                ZIndex = 103,
+            }, aCnt)
+
+            -- Nút Huỷ
+            local aCancelBtn = create("TextButton", {
+                Size = UDim2.new(0.48, 0, 0, 38),
+                Position = UDim2.fromOffset(0, 168),
+                BackgroundColor3 = C.red, BackgroundTransparency = 0.8,
+                BorderSizePixel = 0,
+                Text = "✕  Huỷ", TextColor3 = C.red,
+                TextSize = 12, Font = Enum.Font.GothamBold,
+                AutoButtonColor = true, ZIndex = 103,
+            }, aCnt)
+            corner(aCancelBtn, 10)
+            create("UIStroke", {Color = C.red, Thickness = 1, Transparency = 0.5}, aCancelBtn)
+
+            -- Nút Key khác
+            local aNewKeyBtn = create("TextButton", {
+                Size = UDim2.new(0.48, 0, 0, 38),
+                Position = UDim2.new(0.52, 0, 0, 168),
+                BackgroundColor3 = C.accent, BackgroundTransparency = 0.8,
+                BorderSizePixel = 0,
+                Text = "🔑  Key khác", TextColor3 = C.accent,
+                TextSize = 12, Font = Enum.Font.GothamBold,
+                AutoButtonColor = true, ZIndex = 103,
+            }, aCnt)
+            corner(aNewKeyBtn, 10)
+            create("UIStroke", {Color = C.accent, Thickness = 1, Transparency = 0.5}, aNewKeyBtn)
+
+            -- Footer
+            create("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 14),
+                Position = UDim2.fromOffset(0, 216),
+                BackgroundTransparency = 1,
+                Text = "🆔 " .. string.sub(HWID, 1, 24) .. "...",
+                TextColor3 = Color3.fromRGB(30, 30, 45),
+                TextSize = 9, Font = Enum.Font.Code,
+                ZIndex = 103,
+            }, aCnt)
+
+            -- ═══ Animation mở ═══
+            TweenService:Create(aOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 0.55}):Play()
+            TweenService:Create(aCard, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(400, 300)
+            }):Play()
+
+            -- Glow
+            task.spawn(function()
+                while aCard and aCard.Parent do
+                    TweenService:Create(aStroke, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {
+                        Transparency = 0, Color = C.green
+                    }):Play()
+                    task.wait(1.5)
+                    if not aCard or not aCard.Parent then break end
+                    TweenService:Create(aStroke, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {
+                        Transparency = 0.5, Color = C.cyan
+                    }):Play()
+                    task.wait(1.5)
+                end
+            end)
+
+            -- Hover effects
+            aCancelBtn.MouseEnter:Connect(function()
+                TweenService:Create(aCancelBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.4}):Play()
+            end)
+            aCancelBtn.MouseLeave:Connect(function()
+                TweenService:Create(aCancelBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.8}):Play()
+            end)
+            aNewKeyBtn.MouseEnter:Connect(function()
+                TweenService:Create(aNewKeyBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.4}):Play()
+            end)
+            aNewKeyBtn.MouseLeave:Connect(function()
+                TweenService:Create(aNewKeyBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.8}):Play()
+            end)
+
+            -- Button logic
+            aCancelBtn.MouseButton1Click:Connect(function()
+                cancelled = true
+                log("🛑 User huỷ auto-login")
+            end)
+            aNewKeyBtn.MouseButton1Click:Connect(function()
+                cancelled = true
+                wantNewKey = true
+                clearSession()
+                log("🔑 User chọn key khác")
+            end)
+
+            -- ═══ ĐẾM NGƯỢC ═══
+            task.wait(0.7) -- chờ animation
+
+            local delay = CONFIG.AUTO_LOGIN_DELAY
+            for i = 1, delay do
+                if cancelled then break end
+                TweenService:Create(aBarFill, TweenInfo.new(0.9, Enum.EasingStyle.Linear), {
+                    Size = UDim2.new(i / delay, 0, 1, 0)
+                }):Play()
+                local left = delay - i
+                if left > 0 then
+                    aCountdown.Text = "⚡ Tự động tải trong " .. left .. "s..."
+                else
+                    aCountdown.Text = "🚀 Đang khởi chạy..."
+                end
+                task.wait(1)
+            end
+
+            -- ═══ ĐÓNG GUI ═══
+            TweenService:Create(aCard, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                Size = UDim2.fromOffset(0, 0)
+            }):Play()
+            TweenService:Create(aOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+            task.wait(0.35)
+            AutoGui:Destroy()
+
+            -- ═══ XỬ LÝ KẾT QUẢ ═══
+            if not cancelled then
+                -- ✅ ĐẾM NGƯỢC XONG → LOAD SCRIPT → DỪNG
+                log("✅ Auto-login thành công!")
+                needKeyGui = false
+                loadMainScript()
+                return -- ← DỪNG HOÀN TOÀN ở đây
+            end
+
+            if wantNewKey then
+                -- User muốn key mới → tiếp tục xuống GUI nhập key
+                needKeyGui = true
+                log("🔑 Chuyển sang GUI nhập key")
+            else
+                -- User bấm Huỷ → dừng hoàn toàn
+                needKeyGui = false
+                log("🛑 Dừng script")
+                return -- ← DỪNG HOÀN TOÀN
+            end
+
+        else
+            -- Key hết hạn
+            log("❌ Key hết hạn: " .. timeMsg)
+            clearSession()
+            needKeyGui = true
+        end
+    else
+        -- HWID không khớp
+        log("❌ HWID không khớp — xoá session")
+        clearSession()
+        needKeyGui = true
+    end
+else
+    log("ℹ️ Chưa có session")
+    needKeyGui = true
+end
+
+-- ════════════════════════════════════════════════════════
+--  📋 BƯỚC 2: GUI NHẬP KEY (chỉ chạy khi needKeyGui=true)
+-- ════════════════════════════════════════════════════════
+if not needKeyGui then
+    log("🏁 Không cần GUI nhập key — kết thúc")
+    return
+end
+
+log("📋 Hiện GUI nhập key...")
+
+local Gui = makeGui("Hax4LKeySystem")
 
 -- Overlay
 local Overlay = create("Frame", {
@@ -211,7 +607,7 @@ local Overlay = create("Frame", {
     BorderSizePixel = 0, ZIndex = 100,
 }, Gui)
 
--- Main
+-- Main card
 local Main = create("Frame", {
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.fromScale(0.5, 0.5),
@@ -222,7 +618,7 @@ local Main = create("Frame", {
 corner(Main, 20)
 
 local mStroke = create("UIStroke", {
-    Color = C.primary, Thickness = 1.5, Transparency = 0.65
+    Color = C.primary, Thickness = 1.5, Transparency = 0.65,
 }, Main)
 
 -- Shadow
@@ -239,14 +635,13 @@ create("ImageLabel", {
     ZIndex = 100,
 }, Main)
 
--- ── TITLE BAR ──
+-- Title bar
 local TBar = create("Frame", {
     Size = UDim2.new(1, 0, 0, 54),
     BackgroundColor3 = C.topbar,
     BorderSizePixel = 0, ZIndex = 102,
 }, Main)
 corner(TBar, 20)
-
 create("Frame", {
     Size = UDim2.new(1, 0, 0, 20),
     Position = UDim2.new(0, 0, 1, -20),
@@ -254,7 +649,6 @@ create("Frame", {
     BorderSizePixel = 0, ZIndex = 102,
 }, TBar)
 
--- Avatar in titlebar
 local tAvatar = create("ImageLabel", {
     Size = UDim2.fromOffset(30, 30),
     Position = UDim2.fromOffset(14, 12),
@@ -277,26 +671,24 @@ create("TextLabel", {
     ZIndex = 103,
 }, TBar)
 
--- Close
+-- Close button
 local XBtn = create("TextButton", {
     Size = UDim2.fromOffset(32, 32),
     Position = UDim2.new(1, -42, 0.5, -16),
-    BackgroundColor3 = C.red,
-    BackgroundTransparency = 0.85,
+    BackgroundColor3 = C.red, BackgroundTransparency = 0.85,
     Text = "✕", TextColor3 = C.red,
     TextSize = 14, Font = Enum.Font.GothamBold,
     ZIndex = 103, BorderSizePixel = 0,
 }, TBar)
 corner(XBtn, 8)
 
--- ── CONTENT ──
+-- Content
 local Cnt = create("Frame", {
     Size = UDim2.new(1, -40, 1, -74),
     Position = UDim2.fromOffset(20, 64),
     BackgroundTransparency = 1, ZIndex = 102,
 }, Main)
 
--- Subtitle
 create("TextLabel", {
     Size = UDim2.new(1, 0, 0, 16),
     BackgroundTransparency = 1,
@@ -339,10 +731,8 @@ local KeyInp = create("TextBox", {
 local SubmitBtn = create("TextButton", {
     Size = UDim2.new(0.48, 0, 0, 46),
     Position = UDim2.fromOffset(0, 88),
-    BackgroundColor3 = C.primaryD,
-    BorderSizePixel = 0,
-    Text = "✅  Nhập Key",
-    TextColor3 = Color3.new(1, 1, 1),
+    BackgroundColor3 = C.primaryD, BorderSizePixel = 0,
+    Text = "✅  Nhập Key", TextColor3 = Color3.new(1, 1, 1),
     TextSize = 14, Font = Enum.Font.GothamBold,
     AutoButtonColor = true, ZIndex = 103,
 }, Cnt)
@@ -351,10 +741,8 @@ corner(SubmitBtn, 12)
 local GetBtn = create("TextButton", {
     Size = UDim2.new(0.48, 0, 0, 46),
     Position = UDim2.new(0.52, 0, 0, 88),
-    BackgroundColor3 = C.accent,
-    BorderSizePixel = 0,
-    Text = "🔗  Lấy Key",
-    TextColor3 = Color3.new(1, 1, 1),
+    BackgroundColor3 = C.accent, BorderSizePixel = 0,
+    Text = "🔗  Lấy Key", TextColor3 = Color3.new(1, 1, 1),
     TextSize = 14, Font = Enum.Font.GothamBold,
     AutoButtonColor = true, ZIndex = 103,
 }, Cnt)
@@ -364,8 +752,7 @@ corner(GetBtn, 12)
 local StF = create("Frame", {
     Size = UDim2.new(1, 0, 0, 80),
     Position = UDim2.fromOffset(0, 148),
-    BackgroundColor3 = C.input,
-    BackgroundTransparency = 0.4,
+    BackgroundColor3 = C.input, BackgroundTransparency = 0.4,
     BorderSizePixel = 0, ZIndex = 103,
 }, Cnt)
 corner(StF, 12)
@@ -374,7 +761,7 @@ local StL = create("TextLabel", {
     Size = UDim2.new(1, -24, 1, 0),
     Position = UDim2.fromOffset(12, 0),
     BackgroundTransparency = 1,
-    Text = '💡 Bấm "Lấy Key" → vượt link → nhận key\nKey ghi nhớ thiết bị • Hiệu lực 24h',
+    Text = '💡 Bấm "Lấy Key" → vượt link → nhận key\nKey ghi nhớ thiết bị • Hiệu lực 24h\n🔄 Lần sau tự động đăng nhập!',
     TextColor3 = C.dim, TextSize = 11,
     Font = Enum.Font.Gotham,
     TextWrapped = true,
@@ -382,7 +769,7 @@ local StL = create("TextLabel", {
     ZIndex = 104,
 }, StF)
 
--- HWID + Footer
+-- Footer
 create("TextLabel", {
     Size = UDim2.new(1, 0, 0, 16),
     Position = UDim2.fromOffset(0, 238),
@@ -401,9 +788,7 @@ create("TextLabel", {
     TextSize = 9, Font = Enum.Font.Gotham, ZIndex = 103,
 }, Cnt)
 
--- ════════════════════════════════════════
---  ✨ ANIMATION
--- ════════════════════════════════════════
+-- ═══ ANIMATION MỞ ═══
 Main.Size = UDim2.fromOffset(0, 0)
 TweenService:Create(Overlay, TweenInfo.new(0.5), {BackgroundTransparency = 0.5}):Play()
 TweenService:Create(Main, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
@@ -412,11 +797,12 @@ TweenService:Create(Main, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingD
 
 -- Glow pulse
 task.spawn(function()
-    while Main.Parent do
+    while Main and Main.Parent do
         TweenService:Create(mStroke, TweenInfo.new(2.5, Enum.EasingStyle.Sine), {
             Transparency = 0.3, Color = C.primary
         }):Play()
         task.wait(2.5)
+        if not Main or not Main.Parent then break end
         TweenService:Create(mStroke, TweenInfo.new(2.5, Enum.EasingStyle.Sine), {
             Transparency = 0.75, Color = C.accent
         }):Play()
@@ -424,9 +810,7 @@ task.spawn(function()
     end
 end)
 
--- ════════════════════════════════════════
---  🖱 DRAGGING
--- ════════════════════════════════════════
+-- ═══ DRAGGING ═══
 do
     local dragging, dragStart, startPos
     TBar.InputBegan:Connect(function(input)
@@ -450,9 +834,7 @@ do
     end)
 end
 
--- ════════════════════════════════════════
---  🎯 FUNCTIONS
--- ════════════════════════════════════════
+-- ═══ HELPERS ═══
 local function setStatus(text, color)
     StL.Text = text
     StL.TextColor3 = color
@@ -479,7 +861,7 @@ local function shakeGUI()
     Main.Position = o
 end
 
--- Close
+-- ═══ CLOSE ═══
 XBtn.MouseButton1Click:Connect(function() closeGUI() end)
 XBtn.MouseEnter:Connect(function()
     TweenService:Create(XBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.4}):Play()
@@ -488,7 +870,7 @@ XBtn.MouseLeave:Connect(function()
     TweenService:Create(XBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.85}):Play()
 end)
 
--- Focus
+-- ═══ FOCUS ═══
 KeyInp.Focused:Connect(function()
     TweenService:Create(inpStroke, TweenInfo.new(0.3), {Color = C.primary}):Play()
 end)
@@ -496,49 +878,31 @@ KeyInp.FocusLost:Connect(function()
     TweenService:Create(inpStroke, TweenInfo.new(0.3), {Color = C.inputBdr}):Play()
 end)
 
--- ════════════════════════════════════════
---  🔗 LẤY KEY (Tạo Key → Link4m → Clipboard)
--- ════════════════════════════════════════
+-- ═══ LẤY KEY ═══
 GetBtn.MouseButton1Click:Connect(function()
     setStatus("⏳ Đang tạo key & link vượt...", C.yellow)
-
     GetBtn.Active = false
     TweenService:Create(GetBtn, TweenInfo.new(0.2), {
         BackgroundColor3 = Color3.fromRGB(55, 55, 65)
     }):Play()
 
-    -- 1. Generate unique key
-    local key = generateKey()
-
-    -- 2. Build callback URL
+    local key   = generateKey()
     local cbUrl = CONFIG.CALLBACK_URL .. "?key=" .. HttpService:UrlEncode(key)
 
-    -- 3. Shorten via Link4m
     local apiUrl = "https://link4m.co/api-shorten/v2?api="
                  .. CONFIG.API_TOKEN
                  .. "&url=" .. HttpService:UrlEncode(cbUrl)
 
     local shortUrl = nil
-
-    local ok, res = pcall(function()
-        return game:HttpGet(apiUrl)
-    end)
-
+    local ok, res = pcall(function() return game:HttpGet(apiUrl) end)
     if ok and res then
-        local ok2, data = pcall(function()
-            return HttpService:JSONDecode(res)
-        end)
+        local ok2, data = pcall(function() return HttpService:JSONDecode(res) end)
         if ok2 and data and data.status == "success" and data.shortenedUrl then
             shortUrl = data.shortenedUrl:gsub("\\/", "/")
         end
     end
+    if not shortUrl then shortUrl = cbUrl end
 
-    -- Fallback if API fails
-    if not shortUrl then
-        shortUrl = cbUrl
-    end
-
-    -- 4. Copy to clipboard
     local copied = false
     pcall(function()
         if setclipboard then setclipboard(shortUrl); copied = true
@@ -550,25 +914,18 @@ GetBtn.MouseButton1Click:Connect(function()
             "✅ Link đã copy vào clipboard!\n\n"
             .. "📋 Mở trình duyệt → Dán link (Ctrl+V)\n"
             .. "→ Vượt link → Nhận key → Quay lại dán key",
-            Color3.fromRGB(34, 211, 238)
+            C.cyan
         )
     else
-        setStatus(
-            "🔗 Mở link này trong trình duyệt:\n\n"
-            .. shortUrl,
-            Color3.fromRGB(34, 211, 238)
-        )
+        setStatus("🔗 Mở link này trong trình duyệt:\n\n" .. shortUrl, C.cyan)
     end
 
-    -- Re-enable
     GetBtn.Active = true
     TweenService:Create(GetBtn, TweenInfo.new(0.3), {BackgroundColor3 = C.accent}):Play()
 end)
 
--- ════════════════════════════════════════
---  ✅ NHẬP KEY
--- ════════════════════════════════════════
-SubmitBtn.MouseButton1Click:Connect(function()
+-- ═══ NHẬP KEY ═══
+local function handleSubmit()
     local key = string.upper(KeyInp.Text:gsub("%s+", ""))
 
     if key == "" then
@@ -589,13 +946,17 @@ SubmitBtn.MouseButton1Click:Connect(function()
     local valid, msg = verifyKey(key)
 
     if valid then
+        log("✅ Key hợp lệ: " .. msg)
+
+        -- 💾 LƯU SESSION
+        saveSession(key)
+
         setStatus(
             "✅ Key hợp lệ! " .. msg
-            .. "\n🔒 Ghi nhớ thiết bị • Đang tải Hax4L...",
+            .. "\n🔒 Ghi nhớ thiết bị • Đang tải Hax4L..."
+            .. "\n🔄 Lần sau tự động đăng nhập!",
             C.green
         )
-
-        saveSession(key)
 
         TweenService:Create(mStroke, TweenInfo.new(0.5), {
             Color = C.green, Transparency = 0
@@ -604,9 +965,10 @@ SubmitBtn.MouseButton1Click:Connect(function()
         task.wait(2)
 
         closeGUI(function()
-            loadstring(game:HttpGet(CONFIG.SCRIPT_URL))()
+            loadMainScript()
         end)
     else
+        log("❌ Key lỗi: " .. msg)
         setStatus("❌ " .. msg .. '\nBấm "Lấy Key" để nhận key mới.', C.red)
         shakeGUI()
 
@@ -616,12 +978,15 @@ SubmitBtn.MouseButton1Click:Connect(function()
             BackgroundColor3 = C.primaryD
         }):Play()
     end
-end)
+end
 
--- Enter
+SubmitBtn.MouseButton1Click:Connect(handleSubmit)
+
 KeyInp.FocusLost:Connect(function(enter)
     if enter then
         task.wait(0.05)
-        SubmitBtn.MouseButton1Click:Fire()
+        handleSubmit()
     end
 end)
+
+end) -- ← KẾT THÚC task.spawn
