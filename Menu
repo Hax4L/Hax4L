@@ -1,499 +1,627 @@
 --[[
-    ╔════════════════════════════════════════╗
-    ║       HAX4L KEY SYSTEM - FINAL         ║
-    ║     Premium Key System for Leaf Hub    ║
-    ╚════════════════════════════════════════╝
-    
-    TÍNH NĂNG:
-    ✅ Tự động đăng nhập lại (không cần nhập key mỗi lần)
-    ✅ 1 Key = 1 Máy (HWID Lock)
-    ✅ Mỗi máy có key riêng (không trùng lặp)
-    ✅ Hiển thị thời gian còn lại
-    ✅ Menu nhỏ gọn không che game
-    ✅ Tự động mở web lấy key
+╔════════════════════════════════════════════════════════╗
+║                                                        ║
+║              🔥 HAX4L — KEY SYSTEM                     ║
+║                                                        ║
+║   Luồng:                                               ║
+║   Script tạo key → Link4m rút gọn → User vượt link    ║
+║   → Trang web hiện key → User copy → Dán vào script   ║
+║   → Ghi nhớ HWID → Lần sau auto-login                 ║
+║                                                        ║
+║   ⚠️ THAY ĐỔI CÁC URL BÊN DƯỚI!                      ║
+║                                                        ║
+╚════════════════════════════════════════════════════════╝
 ]]
 
-local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
-local TweenService = game:GetService("TweenService")
+-- ════════════════════════════════════════
+--  ⚙️ CẤU HÌNH (THAY ĐỔI!)
+-- ════════════════════════════════════════
+local CONFIG = {
+    -- 🔗 URL trang GitHub Pages (CHỈ 1 TRANG index.html)
+    CALLBACK_URL = "https://YOUR_USERNAME.github.io/Hax4L-KeySystem/index.html",
 
--- ============================================
--- CONFIG (THAY ĐỔI CÁC GIÁ TRỊ NÀY)
--- ============================================
-local KEY_WEBSITE = "https://hax4l.github.io/Hax4L/" -- ⚠️ THAY BẰNG LINK GITHUB PAGES CỦA BẠN
-local LEAF_HUB_URL = "https://github.com/LeafHubAcademy/LeafHub/raw/refs/heads/main/Leaf.lua"
-local LINK4M_TOKEN = "69bf87bdf47f6d1d8a4b60a3" -- Token Link4m của bạn
-local LOGO_IMAGE_ID = "rbxassetid://92734837522941" -- ID ảnh logo
+    -- 🔗 Link4m API token
+    API_TOKEN    = "69bf87bdf47f6d1d8a4b60a3",
 
--- ============================================
--- HÀM LẤY HWID (Hardware ID)
--- ============================================
+    -- 🔗 Script chính load khi key đúng
+    SCRIPT_URL   = "https://github.com/LeafHubAcademy/LeafHub/raw/refs/heads/main/Leaf.lua",
+
+    -- 🔐 Secret (phải giống JavaScript)
+    SECRET       = "HAX4L_PR1V4T3_S3CR3T_2025",
+
+    -- 💾 File lưu session
+    SAVE_FILE    = "Hax4L_Session.json",
+
+    -- 🖼 Avatar Roblox Asset ID (upload ảnh lên Roblox → lấy ID)
+    AVATAR_ASSET = "rbxassetid://0",
+}
+
+-- ════════════════════════════════════════
+--  SERVICES
+-- ════════════════════════════════════════
+local Players          = game:GetService("Players")
+local HttpService      = game:GetService("HttpService")
+local TweenService     = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+-- ════════════════════════════════════════
+--  🔐 DJB2 HASH (giống JS)
+-- ════════════════════════════════════════
+local function djb2(str)
+    local h = 5381
+    for i = 1, #str do
+        h = (h * 33 + string.byte(str, i)) % 4294967296
+    end
+    return math.floor(h)
+end
+
+-- ════════════════════════════════════════
+--  🔑 KEY FUNCTIONS
+-- ════════════════════════════════════════
+local function generateKey()
+    local ts = os.time()
+    local tsHex = string.format("%08X", ts)
+
+    -- Random 4 bytes
+    local rndBytes = {}
+    for i = 1, 4 do
+        rndBytes[i] = string.format("%02X", math.random(0, 255))
+    end
+    local rndHex = table.concat(rndBytes)
+
+    -- Checksum
+    local chkHex = string.format("%08X", djb2(tsHex .. rndHex .. CONFIG.SECRET))
+
+    return "HAX4L-" .. tsHex .. "-" .. rndHex .. "-" .. chkHex
+end
+
+local function verifyKey(key)
+    if not key or key == "" then return false, "Không có key" end
+    key = string.upper(key:gsub("%s+", ""))
+
+    local parts = {}
+    for part in key:gmatch("[^%-]+") do parts[#parts + 1] = part end
+
+    if #parts ~= 4 or parts[1] ~= "HAX4L" then return false, "Sai định dạng" end
+    if #parts[2] ~= 8 or #parts[3] ~= 8 or #parts[4] ~= 8 then return false, "Sai độ dài" end
+
+    local expected = string.format("%08X", djb2(parts[2] .. parts[3] .. CONFIG.SECRET))
+    if parts[4] ~= expected then return false, "Key giả mạo" end
+
+    local ts = tonumber(parts[2], 16)
+    if not ts then return false, "Timestamp lỗi" end
+
+    local now = os.time()
+    if now - ts > 86400 then return false, "Hết hạn" end
+    if ts > now + 300 then return false, "Không hợp lệ" end
+
+    local remain = 86400 - (now - ts)
+    local rH = math.floor(remain / 3600)
+    local rM = math.floor((remain % 3600) / 60)
+    return true, string.format("Còn %dh %dm", rH, rM)
+end
+
+-- ════════════════════════════════════════
+--  🆔 HWID
+-- ════════════════════════════════════════
 local function getHWID()
-    local hwid = nil
-    
-    -- Thử nhiều phương án để lấy HWID
-    if gethwid then 
-        hwid = gethwid() 
+    local fns = {
+        function() return gethwid() end,
+        function() return getdeviceid() end,
+        function() return getfingerprint() end,
+        function() return game:GetService("RbxAnalyticsService"):GetClientId() end,
+    }
+    for _, fn in ipairs(fns) do
+        local ok, r = pcall(fn)
+        if ok and r and tostring(r) ~= "" then return tostring(r) end
     end
-    
-    if not hwid or hwid == "" then
-        pcall(function() 
-            hwid = game:GetService("RbxAnalyticsService"):GetClientId() 
-        end)
-    end
-    
-    if not hwid or hwid == "" then
-        hwid = "HWID-" .. Players.LocalPlayer.UserId
-    end
-    
-    return tostring(hwid)
+    return "UID_" .. tostring(player.UserId)
 end
 
--- ============================================
--- DATABASE KEY (Lưu key đã dùng)
--- ============================================
-local keyDatabase = {}
+local HWID = getHWID()
 
-local function loadKeyDatabase()
-    if isfile and readfile and isfile("HAX4L_KeyDB.json") then
-        pcall(function()
-            keyDatabase = HttpService:JSONDecode(readfile("HAX4L_KeyDB.json"))
-        end)
-    end
-end
-
-local function saveKeyDatabase()
-    if writefile then
-        writefile("HAX4L_KeyDB.json", HttpService:JSONEncode(keyDatabase))
-    end
-end
-
-loadKeyDatabase()
-
--- ============================================
--- KIỂM TRA KEY ĐÃ LƯU
--- ============================================
-local SAVE_FILE = "HAX4L_KeyData.json"
-local savedData = nil
-
-if isfile and readfile and isfile(SAVE_FILE) then
+-- ════════════════════════════════════════
+--  💾 SESSION (SAVE / LOAD)
+-- ════════════════════════════════════════
+local function saveSession(key)
     pcall(function()
-        savedData = HttpService:JSONDecode(readfile(SAVE_FILE))
+        writefile(CONFIG.SAVE_FILE, HttpService:JSONEncode({
+            key = key, hwid = HWID, time = os.time()
+        }))
     end)
 end
 
-local userHWID = getHWID()
-local today = os.date("%Y-%m-%d")
-
--- ============================================
--- TỰ ĐỘNG ĐĂNG NHẬP (Không cần nhập key lại)
--- ============================================
-if savedData and savedData.hwid == userHWID then
-    if savedData.date == today then
-        local activatedTime = savedData.activatedTime
-        local elapsed = os.time() - activatedTime
-        local remaining = (24 * 3600) - elapsed
-        
-        if remaining > 0 then
-            print("╔════════════════════════════════════════╗")
-            print("║  ✅ TỰ ĐỘNG ĐĂNG NHẬP THÀNH CÔNG!      ║")
-            print("╠════════════════════════════════════════╣")
-            print("║  Key:", savedData.key)
-            print("║  HWID:", userHWID)
-            print("║  Thời gian còn:", math.floor(remaining/3600) .. "h " .. math.floor((remaining%3600)/60) .. "m")
-            print("╚════════════════════════════════════════╝")
-            
-            StarterGui:SetCore("SendNotification", {
-                Title = "HAX4L × LEAF HUB",
-                Text = "✅ Tự động đăng nhập!\nKey còn: " .. math.floor(remaining/3600) .. "h " .. math.floor((remaining%3600)/60) .. "m",
-                Duration = 6,
-                Icon = LOGO_IMAGE_ID
-            })
-            
-            loadLeafHub(remaining, savedData.key)
-            return
-        else
-            if delfile then delfile(SAVE_FILE) end
-            StarterGui:SetCore("SendNotification", {
-                Title = "HAX4L",
-                Text = "⏰ Key đã hết hạn (24h)!\nVui lòng lấy key mới",
-                Duration = 6
-            })
-        end
-    else
-        if delfile then delfile(SAVE_FILE) end
-        StarterGui:SetCore("SendNotification", {
-            Title = "HAX4L",
-            Text = "⏰ Ngày mới! Vui lòng lấy key mới",
-            Duration = 6
-        })
-    end
+local function loadSession()
+    local ok, raw = pcall(function() return readfile(CONFIG.SAVE_FILE) end)
+    if not ok or not raw then return nil end
+    local ok2, data = pcall(function() return HttpService:JSONDecode(raw) end)
+    if not ok2 or not data then return nil end
+    return data
 end
 
--- ============================================
--- TẠO GUI MENU (Nhỏ gọn 300x300px)
--- ============================================
-print("🔑 Chưa có key hoặc key đã hết hạn → Hiện menu nhập key")
+local function clearSession()
+    pcall(function() delfile(CONFIG.SAVE_FILE) end)
+end
 
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local UICorner = Instance.new("UICorner")
-local LogoImage = Instance.new("ImageLabel")
-local LogoCorner = Instance.new("UICorner")
-local LogoBorder = Instance.new("UIStroke")
-local TitleLabel = Instance.new("TextLabel")
-local StatusLabel = Instance.new("TextLabel")
-local KeyBox = Instance.new("TextBox")
-local KeyBoxCorner = Instance.new("UICorner")
-local SubmitBtn = Instance.new("TextButton")
-local SubmitCorner = Instance.new("UICorner")
-local GetKeyBtn = Instance.new("TextButton")
-local GetKeyCorner = Instance.new("UICorner")
-local CloseBtn = Instance.new("TextButton")
-local CloseCorner = Instance.new("UICorner")
-
-ScreenGui.Name = "HAX4L_KeySystem"
-ScreenGui.Parent = game.CoreGui
-ScreenGui.ResetOnSpawn = false
-
--- Main Frame
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(1, -320, 0.5, -150)
-MainFrame.Size = UDim2.new(0, 300, 0, 300)
-MainFrame.Active = true
-MainFrame.Draggable = true
-UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = MainFrame
-
--- Shadow/Glow
-local Shadow = Instance.new("ImageLabel")
-Shadow.Parent = MainFrame
-Shadow.BackgroundTransparency = 1
-Shadow.Position = UDim2.new(0, -15, 0, -15)
-Shadow.Size = UDim2.new(1, 30, 1, 30)
-Shadow.ZIndex = 0
-Shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
-Shadow.ImageColor3 = Color3.fromRGB(0, 255, 65)
-Shadow.ImageTransparency = 0.7
-
--- Logo Image
-LogoImage.Parent = MainFrame
-LogoImage.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-LogoImage.Position = UDim2.new(0.5, -30, 0, 15)
-LogoImage.Size = UDim2.new(0, 60, 0, 60)
-LogoImage.Image = LOGO_IMAGE_ID
-LogoImage.ScaleType = Enum.ScaleType.Fit
-LogoCorner.CornerRadius = UDim.new(1, 0)
-LogoCorner.Parent = LogoImage
-LogoBorder.Parent = LogoImage
-LogoBorder.Color = Color3.fromRGB(0, 255, 65)
-LogoBorder.Thickness = 2
-
--- Title
-TitleLabel.Parent = MainFrame
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Position = UDim2.new(0, 0, 0, 80)
-TitleLabel.Size = UDim2.new(1, 0, 0, 25)
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "HAX4L"
-TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 65)
-TitleLabel.TextSize = 18
-
--- Status
-StatusLabel.Parent = MainFrame
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Position = UDim2.new(0, 0, 0, 105)
-StatusLabel.Size = UDim2.new(1, 0, 0, 15)
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Text = "Nhập 1 lần → Nhớ vĩnh viễn"
-StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-StatusLabel.TextSize = 9
-
--- Key Input Box
-KeyBox.Parent = MainFrame
-KeyBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-KeyBox.Position = UDim2.new(0.08, 0, 0, 130)
-KeyBox.Size = UDim2.new(0.84, 0, 0, 35)
-KeyBox.Font = Enum.Font.Gotham
-KeyBox.PlaceholderText = "Nhập key..."
-KeyBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-KeyBox.Text = ""
-KeyBox.TextColor3 = Color3.fromRGB(0, 255, 65)
-KeyBox.TextSize = 12
-KeyBoxCorner.CornerRadius = UDim.new(0, 8)
-KeyBoxCorner.Parent = KeyBox
-
--- Submit Button
-SubmitBtn.Parent = MainFrame
-SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
-SubmitBtn.Position = UDim2.new(0.08, 0, 0, 175)
-SubmitBtn.Size = UDim2.new(0.84, 0, 0, 32)
-SubmitBtn.Font = Enum.Font.GothamBold
-SubmitBtn.Text = "✓ XÁC NHẬN"
-SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SubmitBtn.TextSize = 13
-SubmitCorner.CornerRadius = UDim.new(0, 8)
-SubmitCorner.Parent = SubmitBtn
-
--- Get Key Button
-GetKeyBtn.Parent = MainFrame
-GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
-GetKeyBtn.Position = UDim2.new(0.08, 0, 0, 215)
-GetKeyBtn.Size = UDim2.new(0.84, 0, 0, 32)
-GetKeyBtn.Font = Enum.Font.GothamBold
-GetKeyBtn.Text = "🌐 LẤY KEY"
-GetKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-GetKeyBtn.TextSize = 13
-GetKeyCorner.CornerRadius = UDim.new(0, 8)
-GetKeyCorner.Parent = GetKeyBtn
-
--- Close Button
-CloseBtn.Parent = MainFrame
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-CloseBtn.Position = UDim2.new(1, -25, 0, 5)
-CloseBtn.Size = UDim2.new(0, 20, 0, 20)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Text = "×"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 16
-CloseCorner.CornerRadius = UDim.new(0, 5)
-CloseCorner.Parent = CloseBtn
-
--- ============================================
--- NÚT ĐÓNG
--- ============================================
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
-
--- ============================================
--- NÚT LẤY KEY (Tự động mở web + gửi HWID)
--- ============================================
-GetKeyBtn.MouseButton1Click:Connect(function()
-    GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 250)
-    wait(0.1)
-    GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
-    
-    StatusLabel.Text = "Đang tạo link..."
-    StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-    
-    -- Tạo URL có HWID (để web sinh key riêng cho máy này)
-    local destinationUrl = KEY_WEBSITE .. "?verified=true&hwid=" .. HttpService:UrlEncode(userHWID)
-    local shortLink = "https://link4m.co/st?api=" .. LINK4M_TOKEN .. "&url=" .. HttpService:UrlEncode(destinationUrl)
-    
-    setclipboard(shortLink)
-    
-    -- Mở web tự động (hỗ trợ nhiều executor)
-    if request then 
-        pcall(function() request({Url=shortLink,Method="GET"}) end) 
-    end
-    if syn and syn.request then 
-        pcall(function() syn.request({Url=shortLink,Method="GET"}) end) 
-    end
-    if http_request then
-        pcall(function() http_request({Url=shortLink,Method="GET"}) end)
-    end
-    
-    StarterGui:SetCore("SendNotification", {
-        Title = "HAX4L",
-        Text = "Web đã mở! Vượt link → Key riêng cho máy này",
-        Duration = 5
-    })
-    
-    StatusLabel.Text = "Key sẽ riêng cho máy này!"
-    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-end)
-
--- ============================================
--- NÚT SUBMIT KEY
--- ============================================
-SubmitBtn.MouseButton1Click:Connect(function()
-    local inputKey = KeyBox.Text:upper():gsub("%s+", "")
-    
-    -- Kiểm tra format
-    if not inputKey:match("^HAX4L%-%w%w%w%w%-%w%w%w%w%-%w%w%w%w$") then
-        SubmitBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        SubmitBtn.Text = "❌ SAI FORMAT!"
-        StatusLabel.Text = "Key phải: HAX4L-XXXX-XXXX-XXXX"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        wait(2)
-        SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
-        SubmitBtn.Text = "✓ XÁC NHẬN"
+-- ════════════════════════════════════════
+--  🔄 AUTO-LOGIN
+-- ════════════════════════════════════════
+local session = loadSession()
+if session and session.hwid == HWID then
+    local valid = verifyKey(session.key)
+    if valid then
+        loadstring(game:HttpGet(CONFIG.SCRIPT_URL))()
         return
     end
-    
-    -- Kiểm tra key đã được dùng chưa
-    if keyDatabase[inputKey] then
-        local lockedHWID = keyDatabase[inputKey]
-        if lockedHWID ~= userHWID then
-            SubmitBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-            SubmitBtn.Text = "❌ KEY ĐÃ DÙNG!"
-            StatusLabel.Text = "Key đã được dùng trên máy khác!"
-            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            
-            StarterGui:SetCore("SendNotification", {
-                Title = "HAX4L",
-                Text = "❌ Key này đã được dùng trên máy khác!\nVui lòng lấy key mới",
-                Duration = 8
-            })
-            
-            wait(3)
-            SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
-            SubmitBtn.Text = "✓ XÁC NHẬN"
-            return
-        end
-    else
-        -- Key mới → Lock vào máy này
-        keyDatabase[inputKey] = userHWID
-        saveKeyDatabase()
-        print("🔒 Đã lock key vào máy này:", inputKey)
+    clearSession()
+elseif session then
+    clearSession()
+end
+
+-- ════════════════════════════════════════
+--  Chưa auto-login → Hiện GUI
+-- ════════════════════════════════════════
+math.randomseed(os.time())
+
+local oldGui = player.PlayerGui:FindFirstChild("Hax4LKeySystem")
+if oldGui then oldGui:Destroy() end
+
+-- Helpers
+local function create(cls, props, par)
+    local inst = Instance.new(cls)
+    for k, v in pairs(props) do inst[k] = v end
+    inst.Parent = par
+    return inst
+end
+
+local function corner(p, r) return create("UICorner", {CornerRadius = UDim.new(0, r or 12)}, p) end
+
+local C = {
+    card     = Color3.fromRGB(10, 10, 22),
+    topbar   = Color3.fromRGB(12, 12, 26),
+    primary  = Color3.fromRGB(0, 212, 255),
+    primaryD = Color3.fromRGB(14, 116, 144),
+    accent   = Color3.fromRGB(124, 58, 237),
+    green    = Color3.fromRGB(34, 197, 94),
+    red      = Color3.fromRGB(239, 68, 68),
+    yellow   = Color3.fromRGB(251, 191, 36),
+    text     = Color3.fromRGB(226, 232, 240),
+    dim      = Color3.fromRGB(80, 80, 110),
+    input    = Color3.fromRGB(18, 18, 32),
+    inputBdr = Color3.fromRGB(40, 40, 60),
+}
+
+-- ScreenGui
+local Gui = create("ScreenGui", {
+    Name = "Hax4LKeySystem",
+    ResetOnSpawn = false,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, nil)
+pcall(function() if syn and syn.protect_gui then syn.protect_gui(Gui) end end)
+pcall(function() if gethui then Gui.Parent = gethui() return end end)
+if not Gui.Parent then Gui.Parent = player:WaitForChild("PlayerGui") end
+
+-- Overlay
+local Overlay = create("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = Color3.new(0, 0, 0),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0, ZIndex = 100,
+}, Gui)
+
+-- Main
+local Main = create("Frame", {
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.5),
+    Size = UDim2.fromOffset(430, 390),
+    BackgroundColor3 = C.card,
+    BorderSizePixel = 0, ZIndex = 101,
+}, Gui)
+corner(Main, 20)
+
+local mStroke = create("UIStroke", {
+    Color = C.primary, Thickness = 1.5, Transparency = 0.65
+}, Main)
+
+-- Shadow
+create("ImageLabel", {
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.5),
+    Size = UDim2.new(1, 50, 1, 50),
+    BackgroundTransparency = 1,
+    Image = "rbxassetid://6015897843",
+    ImageColor3 = Color3.new(0, 0, 0),
+    ImageTransparency = 0.3,
+    ScaleType = Enum.ScaleType.Slice,
+    SliceCenter = Rect.new(49, 49, 450, 450),
+    ZIndex = 100,
+}, Main)
+
+-- ── TITLE BAR ──
+local TBar = create("Frame", {
+    Size = UDim2.new(1, 0, 0, 54),
+    BackgroundColor3 = C.topbar,
+    BorderSizePixel = 0, ZIndex = 102,
+}, Main)
+corner(TBar, 20)
+
+create("Frame", {
+    Size = UDim2.new(1, 0, 0, 20),
+    Position = UDim2.new(0, 0, 1, -20),
+    BackgroundColor3 = C.topbar,
+    BorderSizePixel = 0, ZIndex = 102,
+}, TBar)
+
+-- Avatar in titlebar
+local tAvatar = create("ImageLabel", {
+    Size = UDim2.fromOffset(30, 30),
+    Position = UDim2.fromOffset(14, 12),
+    BackgroundColor3 = C.primary,
+    BackgroundTransparency = 0.9,
+    Image = CONFIG.AVATAR_ASSET,
+    ScaleType = Enum.ScaleType.Crop,
+    ZIndex = 103,
+}, TBar)
+corner(tAvatar, 8)
+
+create("TextLabel", {
+    Size = UDim2.new(1, -100, 1, 0),
+    Position = UDim2.fromOffset(52, 0),
+    BackgroundTransparency = 1,
+    Text = "Hax4L",
+    TextColor3 = C.primary,
+    TextSize = 19, Font = Enum.Font.GothamBold,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex = 103,
+}, TBar)
+
+-- Close
+local XBtn = create("TextButton", {
+    Size = UDim2.fromOffset(32, 32),
+    Position = UDim2.new(1, -42, 0.5, -16),
+    BackgroundColor3 = C.red,
+    BackgroundTransparency = 0.85,
+    Text = "✕", TextColor3 = C.red,
+    TextSize = 14, Font = Enum.Font.GothamBold,
+    ZIndex = 103, BorderSizePixel = 0,
+}, TBar)
+corner(XBtn, 8)
+
+-- ── CONTENT ──
+local Cnt = create("Frame", {
+    Size = UDim2.new(1, -40, 1, -74),
+    Position = UDim2.fromOffset(20, 64),
+    BackgroundTransparency = 1, ZIndex = 102,
+}, Main)
+
+-- Subtitle
+create("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 16),
+    BackgroundTransparency = 1,
+    Text = "🔑 Nhập key để mở khoá script",
+    TextColor3 = C.dim, TextSize = 12,
+    Font = Enum.Font.Gotham, ZIndex = 103,
+}, Cnt)
+
+-- Input
+local InpF = create("Frame", {
+    Size = UDim2.new(1, 0, 0, 46),
+    Position = UDim2.fromOffset(0, 28),
+    BackgroundColor3 = C.input,
+    BorderSizePixel = 0, ZIndex = 103,
+}, Cnt)
+corner(InpF, 12)
+local inpStroke = create("UIStroke", {Color = C.inputBdr, Thickness = 1}, InpF)
+
+create("TextLabel", {
+    Size = UDim2.fromOffset(30, 46),
+    Position = UDim2.fromOffset(10, 0),
+    BackgroundTransparency = 1,
+    Text = "🔑", TextSize = 12, ZIndex = 104,
+}, InpF)
+
+local KeyInp = create("TextBox", {
+    Size = UDim2.new(1, -50, 1, 0),
+    Position = UDim2.fromOffset(40, 0),
+    BackgroundTransparency = 1,
+    PlaceholderText = "HAX4L-XXXXXXXX-XXXXXXXX-XXXXXXXX",
+    Text = "", TextColor3 = C.text,
+    PlaceholderColor3 = Color3.fromRGB(50, 50, 70),
+    TextSize = 12, Font = Enum.Font.Code,
+    ClearTextOnFocus = false,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex = 104,
+}, InpF)
+
+-- Buttons
+local SubmitBtn = create("TextButton", {
+    Size = UDim2.new(0.48, 0, 0, 46),
+    Position = UDim2.fromOffset(0, 88),
+    BackgroundColor3 = C.primaryD,
+    BorderSizePixel = 0,
+    Text = "✅  Nhập Key",
+    TextColor3 = Color3.new(1, 1, 1),
+    TextSize = 14, Font = Enum.Font.GothamBold,
+    AutoButtonColor = true, ZIndex = 103,
+}, Cnt)
+corner(SubmitBtn, 12)
+
+local GetBtn = create("TextButton", {
+    Size = UDim2.new(0.48, 0, 0, 46),
+    Position = UDim2.new(0.52, 0, 0, 88),
+    BackgroundColor3 = C.accent,
+    BorderSizePixel = 0,
+    Text = "🔗  Lấy Key",
+    TextColor3 = Color3.new(1, 1, 1),
+    TextSize = 14, Font = Enum.Font.GothamBold,
+    AutoButtonColor = true, ZIndex = 103,
+}, Cnt)
+corner(GetBtn, 12)
+
+-- Status
+local StF = create("Frame", {
+    Size = UDim2.new(1, 0, 0, 80),
+    Position = UDim2.fromOffset(0, 148),
+    BackgroundColor3 = C.input,
+    BackgroundTransparency = 0.4,
+    BorderSizePixel = 0, ZIndex = 103,
+}, Cnt)
+corner(StF, 12)
+
+local StL = create("TextLabel", {
+    Size = UDim2.new(1, -24, 1, 0),
+    Position = UDim2.fromOffset(12, 0),
+    BackgroundTransparency = 1,
+    Text = '💡 Bấm "Lấy Key" → vượt link → nhận key\nKey ghi nhớ thiết bị • Hiệu lực 24h',
+    TextColor3 = C.dim, TextSize = 11,
+    Font = Enum.Font.Gotham,
+    TextWrapped = true,
+    TextYAlignment = Enum.TextYAlignment.Center,
+    ZIndex = 104,
+}, StF)
+
+-- HWID + Footer
+create("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 16),
+    Position = UDim2.fromOffset(0, 238),
+    BackgroundTransparency = 1,
+    Text = "🆔 " .. string.sub(HWID, 1, 24) .. "...",
+    TextColor3 = Color3.fromRGB(35, 35, 50),
+    TextSize = 9, Font = Enum.Font.Code, ZIndex = 103,
+}, Cnt)
+
+create("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 16),
+    Position = UDim2.fromOffset(0, 256),
+    BackgroundTransparency = 1,
+    Text = "⏱ 24h  •  🔒 HWID  •  ⚡ Auto-Login",
+    TextColor3 = Color3.fromRGB(35, 35, 50),
+    TextSize = 9, Font = Enum.Font.Gotham, ZIndex = 103,
+}, Cnt)
+
+-- ════════════════════════════════════════
+--  ✨ ANIMATION
+-- ════════════════════════════════════════
+Main.Size = UDim2.fromOffset(0, 0)
+TweenService:Create(Overlay, TweenInfo.new(0.5), {BackgroundTransparency = 0.5}):Play()
+TweenService:Create(Main, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.fromOffset(430, 390)
+}):Play()
+
+-- Glow pulse
+task.spawn(function()
+    while Main.Parent do
+        TweenService:Create(mStroke, TweenInfo.new(2.5, Enum.EasingStyle.Sine), {
+            Transparency = 0.3, Color = C.primary
+        }):Play()
+        task.wait(2.5)
+        TweenService:Create(mStroke, TweenInfo.new(2.5, Enum.EasingStyle.Sine), {
+            Transparency = 0.75, Color = C.accent
+        }):Play()
+        task.wait(2.5)
     end
-    
-    SubmitBtn.Text = "⏳ ĐANG LƯU..."
-    StatusLabel.Text = "Đang lưu key vĩnh viễn..."
-    StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-    
-    -- Lưu key vĩnh viễn
-    local keyData = {
-        key = inputKey,
-        hwid = userHWID,
-        date = today,
-        activatedTime = os.time()
-    }
-    
-    if writefile then
-        writefile(SAVE_FILE, HttpService:JSONEncode(keyData))
-        print("💾 Đã lưu key vĩnh viễn:", inputKey)
-    end
-    
-    SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-    SubmitBtn.Text = "✅ ĐÃ LƯU!"
-    StatusLabel.Text = "Key đã được lưu! Lần sau tự động đăng nhập"
-    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-    
-    StarterGui:SetCore("SendNotification", {
-        Title = "HAX4L",
-        Text = "✅ Key đã lưu thành công!\nLần sau không cần nhập lại",
-        Duration = 6
-    })
-    
-    wait(1.5)
-    ScreenGui:Destroy()
-    loadLeafHub(24 * 3600, inputKey)
 end)
 
--- ============================================
--- LOAD LEAF HUB + TIMER NHỎ GỌN
--- ============================================
-function loadLeafHub(remainingSeconds, keyUsed)
-    print("╔════════════════════════════════════════╗")
-    print("║       HAX4L × LEAF HUB LOADED          ║")
-    print("╠════════════════════════════════════════╣")
-    print("║  Key:", keyUsed)
-    print("║  HWID:", userHWID)
-    print("║  Thời gian:", math.floor(remainingSeconds/3600) .. "h")
-    print("║  Lưu: Vĩnh viễn (tự động đăng nhập)   ║")
-    print("╚════���═══════════════════════════════════╝")
-    
-    -- Timer nhỏ gọn góc phải màn hình
-    local TimeGui = Instance.new("ScreenGui")
-    local TimeButton = Instance.new("TextButton")
-    local TimeCorner = Instance.new("UICorner")
-    
-    TimeGui.Name = "HAX4L_Timer"
-    TimeGui.Parent = game.CoreGui
-    TimeGui.ResetOnSpawn = false
-    
-    TimeButton.Parent = TimeGui
-    TimeButton.BackgroundColor3 = Color3.fromRGB(0, 20, 0)
-    TimeButton.BackgroundTransparency = 0.3
-    TimeButton.BorderSizePixel = 0
-    TimeButton.Position = UDim2.new(1, -90, 0, 10)
-    TimeButton.Size = UDim2.new(0, 80, 0, 30)
-    TimeButton.Font = Enum.Font.GothamBold
-    TimeButton.TextColor3 = Color3.fromRGB(0, 255, 65)
-    TimeButton.TextSize = 11
-    TimeButton.AutoButtonColor = false
-    TimeCorner.CornerRadius = UDim.new(0, 8)
-    TimeCorner.Parent = TimeButton
-    
-    -- Hover effect
-    TimeButton.MouseEnter:Connect(function()
-        TweenService:Create(TimeButton, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.1, 
-            Size = UDim2.new(0, 120, 0, 40)
-        }):Play()
-    end)
-    
-    TimeButton.MouseLeave:Connect(function()
-        TweenService:Create(TimeButton, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.3, 
-            Size = UDim2.new(0, 80, 0, 30)
-        }):Play()
-    end)
-    
-    -- Update timer
-    local startTime = os.time()
-    spawn(function()
-        while true do
-            local remaining = remainingSeconds - (os.time() - startTime)
-            
-            if remaining <= 0 then
-                TimeButton.Text = "⏰ HẾT HẠN"
-                TimeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
-                wait(5)
-                
-                if delfile and isfile(SAVE_FILE) then 
-                    delfile(SAVE_FILE)
-                    print("🗑️ Đã xóa key hết hạn")
-                end
-                
-                StarterGui:SetCore("SendNotification", {
-                    Title = "HAX4L",
-                    Text = "⏰ Key đã hết hạn (24h)!\nVui lòng lấy key mới",
-                    Duration = 10
-                })
-                
-                wait(2)
-                game.Players.LocalPlayer:Kick("Key đã hết hạn (24h)!\nVui lòng lấy key mới tại:\n" .. KEY_WEBSITE)
-                return
-            end
-            
-            local h = math.floor(remaining/3600)
-            local m = math.floor((remaining%3600)/60)
-            TimeButton.Text = string.format("⏰ %02d:%02d", h, m)
-            
-            if remaining <= 3600 then
-                TimeButton.TextColor3 = Color3.fromRGB(255, 150, 0)
-            elseif remaining <= 600 then
-                TimeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
-            end
-            
-            wait(60)
+-- ════════════════════════════════════════
+--  🖱 DRAGGING
+-- ════════════════════════════════════════
+do
+    local dragging, dragStart, startPos
+    TBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
         end
     end)
-    
-    -- Load Leaf Hub
-    local success, err = pcall(function()
-        loadstring(game:HttpGet(LEAF_HUB_URL))()
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+                      or input.UserInputType == Enum.UserInputType.Touch) then
+            local d = input.Position - dragStart
+            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X,
+                                      startPos.Y.Scale, startPos.Y.Offset + d.Y)
+        end
     end)
-    
-    if success then
-        StarterGui:SetCore("SendNotification", {
-            Title = "HAX4L × LEAF HUB",
-            Text = "✅ Loaded thành công!\nKey còn: " .. math.floor(remainingSeconds/3600) .. "h",
-            Duration = 5,
-            Icon = LOGO_IMAGE_ID
-        })
-    else
-        warn("❌ Lỗi load Leaf Hub:", err)
-        StarterGui:SetCore("SendNotification", {
-            Title = "HAX4L",
-            Text = "❌ Lỗi load Leaf Hub!\nVui lòng thử lại",
-            Duration = 5
-        })
-    end
 end
+
+-- ════════════════════════════════════════
+--  🎯 FUNCTIONS
+-- ════════════════════════════════════════
+local function setStatus(text, color)
+    StL.Text = text
+    StL.TextColor3 = color
+    StF.BackgroundTransparency = 0.15
+    TweenService:Create(StF, TweenInfo.new(0.5), {BackgroundTransparency = 0.4}):Play()
+end
+
+local function closeGUI(cb)
+    TweenService:Create(Main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.fromOffset(0, 0)
+    }):Play()
+    TweenService:Create(Overlay, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
+    task.wait(0.4)
+    Gui:Destroy()
+    if cb then cb() end
+end
+
+local function shakeGUI()
+    local o = Main.Position
+    for i = 1, 6 do
+        Main.Position = UDim2.new(o.X.Scale, o.X.Offset + (i%2==0 and 7 or -7), o.Y.Scale, o.Y.Offset)
+        task.wait(0.04)
+    end
+    Main.Position = o
+end
+
+-- Close
+XBtn.MouseButton1Click:Connect(function() closeGUI() end)
+XBtn.MouseEnter:Connect(function()
+    TweenService:Create(XBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.4}):Play()
+end)
+XBtn.MouseLeave:Connect(function()
+    TweenService:Create(XBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.85}):Play()
+end)
+
+-- Focus
+KeyInp.Focused:Connect(function()
+    TweenService:Create(inpStroke, TweenInfo.new(0.3), {Color = C.primary}):Play()
+end)
+KeyInp.FocusLost:Connect(function()
+    TweenService:Create(inpStroke, TweenInfo.new(0.3), {Color = C.inputBdr}):Play()
+end)
+
+-- ════════════════════════════════════════
+--  🔗 LẤY KEY (Tạo Key → Link4m → Clipboard)
+-- ════════════════════════════════════════
+GetBtn.MouseButton1Click:Connect(function()
+    setStatus("⏳ Đang tạo key & link vượt...", C.yellow)
+
+    GetBtn.Active = false
+    TweenService:Create(GetBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+    }):Play()
+
+    -- 1. Generate unique key
+    local key = generateKey()
+
+    -- 2. Build callback URL
+    local cbUrl = CONFIG.CALLBACK_URL .. "?key=" .. HttpService:UrlEncode(key)
+
+    -- 3. Shorten via Link4m
+    local apiUrl = "https://link4m.co/api-shorten/v2?api="
+                 .. CONFIG.API_TOKEN
+                 .. "&url=" .. HttpService:UrlEncode(cbUrl)
+
+    local shortUrl = nil
+
+    local ok, res = pcall(function()
+        return game:HttpGet(apiUrl)
+    end)
+
+    if ok and res then
+        local ok2, data = pcall(function()
+            return HttpService:JSONDecode(res)
+        end)
+        if ok2 and data and data.status == "success" and data.shortenedUrl then
+            shortUrl = data.shortenedUrl:gsub("\\/", "/")
+        end
+    end
+
+    -- Fallback if API fails
+    if not shortUrl then
+        shortUrl = cbUrl
+    end
+
+    -- 4. Copy to clipboard
+    local copied = false
+    pcall(function()
+        if setclipboard then setclipboard(shortUrl); copied = true
+        elseif toclipboard then toclipboard(shortUrl); copied = true end
+    end)
+
+    if copied then
+        setStatus(
+            "✅ Link đã copy vào clipboard!\n\n"
+            .. "📋 Mở trình duyệt → Dán link (Ctrl+V)\n"
+            .. "→ Vượt link → Nhận key → Quay lại dán key",
+            Color3.fromRGB(34, 211, 238)
+        )
+    else
+        setStatus(
+            "🔗 Mở link này trong trình duyệt:\n\n"
+            .. shortUrl,
+            Color3.fromRGB(34, 211, 238)
+        )
+    end
+
+    -- Re-enable
+    GetBtn.Active = true
+    TweenService:Create(GetBtn, TweenInfo.new(0.3), {BackgroundColor3 = C.accent}):Play()
+end)
+
+-- ════════════════════════════════════════
+--  ✅ NHẬP KEY
+-- ════════════════════════════════════════
+SubmitBtn.MouseButton1Click:Connect(function()
+    local key = string.upper(KeyInp.Text:gsub("%s+", ""))
+
+    if key == "" then
+        setStatus("❌ Vui lòng nhập key!", C.red)
+        shakeGUI()
+        return
+    end
+
+    SubmitBtn.Active = false
+    SubmitBtn.AutoButtonColor = false
+    TweenService:Create(SubmitBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+    }):Play()
+
+    setStatus("⏳ Đang kiểm tra key...", C.yellow)
+    task.wait(0.8)
+
+    local valid, msg = verifyKey(key)
+
+    if valid then
+        setStatus(
+            "✅ Key hợp lệ! " .. msg
+            .. "\n🔒 Ghi nhớ thiết bị • Đang tải Hax4L...",
+            C.green
+        )
+
+        saveSession(key)
+
+        TweenService:Create(mStroke, TweenInfo.new(0.5), {
+            Color = C.green, Transparency = 0
+        }):Play()
+
+        task.wait(2)
+
+        closeGUI(function()
+            loadstring(game:HttpGet(CONFIG.SCRIPT_URL))()
+        end)
+    else
+        setStatus("❌ " .. msg .. '\nBấm "Lấy Key" để nhận key mới.', C.red)
+        shakeGUI()
+
+        SubmitBtn.Active = true
+        SubmitBtn.AutoButtonColor = true
+        TweenService:Create(SubmitBtn, TweenInfo.new(0.3), {
+            BackgroundColor3 = C.primaryD
+        }):Play()
+    end
+end)
+
+-- Enter
+KeyInp.FocusLost:Connect(function(enter)
+    if enter then
+        task.wait(0.05)
+        SubmitBtn.MouseButton1Click:Fire()
+    end
+end)
