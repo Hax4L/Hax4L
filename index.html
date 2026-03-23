@@ -1,532 +1,609 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>HAX4L - Premium Key System</title>
-  <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
-    
-    * { margin:0; padding:0; box-sizing:border-box; }
-    html { font-size:14px; }
-    
-    body {
-      background:#000;
-      color:#0f0;
-      font-family:'Orbitron',sans-serif;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow-x:hidden;
-      background:radial-gradient(circle at center,#001a00,#000);
-      padding:15px;
-    }
-    
-    canvas {
-      position:fixed;
-      top:0;
-      left:0;
-      width:100%;
-      height:100%;
-      z-index:1;
-      pointer-events:none;
-    }
-    
-    .container {
-      background:rgba(0,20,0,0.95);
-      padding:clamp(20px,4vw,50px);
-      border-radius:clamp(12px,2.5vw,20px);
-      border:clamp(2px,0.4vw,4px) solid #0f0;
-      box-shadow:0 0 clamp(40px,8vw,80px) rgba(0,255,65,0.6);
-      text-align:center;
-      width:100%;
-      max-width:650px;
-      position:relative;
-      z-index:10;
-      animation:slideIn 0.8s ease-out;
-    }
-    
-    @keyframes slideIn {
-      from { opacity:0; transform:translateY(-50px); }
-      to { opacity:1; transform:translateY(0); }
-    }
-    
-    .logo-img {
-      width:clamp(80px,15vw,120px);
-      height:clamp(80px,15vw,120px);
-      border-radius:50%;
-      border:4px solid #0f0;
-      box-shadow:0 0 30px rgba(0,255,65,0.8);
-      margin:0 auto 15px;
-      animation:pulse 2s infinite;
-      object-fit:cover;
-    }
-    
-    @keyframes pulse {
-      0%,100% { box-shadow:0 0 20px rgba(0,255,65,0.8); transform:scale(1); }
-      50% { box-shadow:0 0 50px rgba(0,255,65,1); transform:scale(1.05); }
-    }
-    
-    .logo-text {
-      font-size:clamp(2rem,7vw,3.5rem);
-      font-weight:900;
-      margin-bottom:clamp(5px,1.5vw,10px);
-      text-shadow:0 0 clamp(20px,5vw,35px) #0f0;
-      letter-spacing:clamp(3px,1vw,8px);
-      animation:textGlow 2s infinite;
-    }
-    
-    @keyframes textGlow {
-      0%,100% { text-shadow:0 0 20px #0f0,0 0 40px #0f0; }
-      50% { text-shadow:0 0 40px #0f0,0 0 80px #0f0,0 0 120px #0f0; }
-    }
-    
-    .tagline {
-      font-size:clamp(0.85rem,2.5vw,1.2rem);
-      opacity:0.95;
-      margin:clamp(5px,1.5vw,12px) 0;
-      letter-spacing:clamp(1px,0.3vw,3px);
-    }
-    
-    .steps {
-      margin:clamp(18px,4vw,30px) 0;
-      padding:clamp(12px,2.5vw,20px);
-      background:rgba(0,60,0,0.4);
-      border-radius:clamp(10px,2vw,15px);
-      border:2px solid rgba(0,255,65,0.4);
-    }
-    
-    .step {
-      font-size:clamp(0.8rem,2.2vw,1rem);
-      margin:clamp(6px,1.5vw,10px) 0;
-      opacity:0.65;
-      transition:all 0.4s;
-      text-align:left;
-      padding-left:clamp(8px,2vw,15px);
-    }
-    
-    .step.active { color:#0f0; font-weight:bold; opacity:1; transform:translateX(5px); }
-    .step.completed { color:#0f0; opacity:1; }
-    .step.completed::before { content:"✓ "; font-weight:bold; margin-right:5px; }
-    
-    .key-box {
-      background:#000;
-      padding:clamp(15px,3.5vw,28px);
-      border:3px dashed #0f0;
-      border-radius:clamp(10px,2vw,15px);
-      font-size:clamp(1.1rem,3.5vw,1.8rem);
-      letter-spacing:clamp(2px,0.8vw,6px);
-      margin:clamp(20px,4vw,35px) 0;
-      min-height:clamp(70px,12vw,100px);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      flex-direction:column;
-      animation:glow 2.5s infinite alternate;
-      word-break:break-all;
-      line-height:1.4;
-    }
-    
-    @keyframes glow {
-      from { box-shadow:0 0 20px #0f0,inset 0 0 10px rgba(0,255,65,0.2); }
-      to { box-shadow:0 0 50px #0f0,0 0 70px #0f0,inset 0 0 25px rgba(0,255,65,0.3); }
-    }
-    
-    .key-box.expired {
-      border-color:#f00;
-      animation:glowRed 2.5s infinite alternate;
-    }
-    
-    @keyframes glowRed {
-      from { box-shadow:0 0 20px #f00,inset 0 0 10px rgba(255,0,0,0.2); }
-      to { box-shadow:0 0 50px #f00,0 0 70px #f00,inset 0 0 25px rgba(255,0,0,0.3); }
-    }
-    
-    .key-box small {
-      font-size:clamp(0.7rem,1.8vw,0.95rem);
-      margin-top:10px;
-      opacity:0.85;
-      font-weight:normal;
-    }
-    
-    .btn {
-      background:#0f0;
-      color:#000;
-      padding:clamp(10px,2.5vw,16px) clamp(25px,6vw,50px);
-      font-size:clamp(0.85rem,2.5vw,1.2rem);
-      border:none;
-      border-radius:50px;
-      cursor:pointer;
-      margin:clamp(8px,1.8vw,12px);
-      font-weight:900;
-      transition:all 0.35s;
-      font-family:'Orbitron',sans-serif;
-      text-transform:uppercase;
-      letter-spacing:clamp(1px,0.3vw,3px);
-      box-shadow:0 4px 12px rgba(0,255,65,0.3);
-    }
-    
-    .btn:hover { background:#00d900; transform:scale(1.05) translateY(-2px); box-shadow:0 6px 20px rgba(0,255,65,0.5); }
-    .btn:active { transform:scale(0.98); }
-    .btn:disabled { background:#444; cursor:not-allowed; opacity:0.6; }
-    .btn.discord { background:#5865F2; color:#fff; }
-    .btn.discord:hover { background:#4752C4; }
-    
-    .info {
-      margin-top:clamp(18px,4vw,30px);
-      font-size:clamp(0.75rem,2vw,0.95rem);
-      line-height:1.8;
-      opacity:0.92;
-    }
-    
-    .info code {
-      background:rgba(0,40,0,0.9);
-      padding:clamp(3px,1vw,7px) clamp(8px,2vw,14px);
-      border-radius:5px;
-      font-family:'Courier New',monospace;
-      font-size:clamp(0.65rem,1.8vw,0.85rem);
-      word-break:break-all;
-      display:inline-block;
-      margin:6px 0;
-      border:1px solid rgba(0,255,65,0.3);
-    }
-    
-    .timer {
-      font-size:clamp(0.95rem,2.8vw,1.3rem);
-      color:#00ff00;
-      margin-top:clamp(12px,2.5vw,18px);
-      font-weight:bold;
-      text-shadow:0 0 8px #00ff00;
-    }
-    
-    .timer.warning { color:#ff9900; text-shadow:0 0 8px #ff9900; }
-    .timer.danger { color:#ff0000; text-shadow:0 0 8px #ff0000; }
-    
-    .hwid-info {
-      font-size:clamp(0.7rem,1.8vw,0.85rem);
-      margin-top:10px;
-      opacity:0.7;
-      font-style:italic;
-    }
-    
-    .notification {
-      position:fixed;
-      top:clamp(12px,2.5vw,25px);
-      right:clamp(12px,2.5vw,25px);
-      background:#0f0;
-      color:#000;
-      padding:clamp(10px,2vw,16px) clamp(18px,4vw,32px);
-      border-radius:clamp(8px,2vw,14px);
-      font-weight:bold;
-      font-size:clamp(0.8rem,2.2vw,1.05rem);
-      opacity:0;
-      transition:opacity 0.6s;
-      z-index:1000;
-      box-shadow:0 0 clamp(20px,5vw,35px) rgba(0,255,65,0.8);
-      max-width:90%;
-      word-wrap:break-word;
-    }
-    
-    @media screen and (max-width:480px) {
-      html { font-size:13px; }
-      .container { padding:18px 15px; }
-      .logo-img { width:90px; height:90px; }
-      .logo-text { font-size:2rem; letter-spacing:3px; }
-      .key-box { font-size:1.2rem; letter-spacing:2px; padding:18px 10px; }
-      .btn { width:100%; margin:8px 0; padding:13px 20px; }
-      .step { text-align:center; padding-left:0; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hax4L — Your Key</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg">
+    <style>
+        :root {
+            --primary: #00d4ff;
+            --accent: #7c3aed;
+            --accent-l: #a78bfa;
+            --green: #22c55e;
+            --green-d: #16a34a;
+            --red: #ef4444;
+            --bg: #05050d;
+            --card: rgba(10, 10, 22, 0.95);
+            --border: rgba(0, 212, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* ═════ BACKGROUND ═════ */
+        .bg-grid {
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 212, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.015) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .bg-glow {
+            position: fixed; inset: 0;
+            background:
+                radial-gradient(ellipse 600px 500px at 30% 20%, rgba(0, 212, 255, 0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 400px at 70% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 70%);
+            animation: gMove 25s ease-in-out infinite alternate;
+        }
+
+        @keyframes gMove {
+            0%   { transform: translate(0,0); }
+            50%  { transform: translate(30px,-20px); }
+            100% { transform: translate(-20px,15px); }
+        }
+
+        .particles { position: fixed; inset: 0; pointer-events: none; }
+
+        .p {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0;
+            animation: pFloat linear infinite;
+        }
+
+        .p.c1 { background: rgba(0,212,255,0.5); box-shadow: 0 0 6px rgba(0,212,255,0.3); }
+        .p.c2 { background: rgba(124,58,237,0.4); box-shadow: 0 0 6px rgba(124,58,237,0.3); }
+        .p.c3 { background: rgba(34,197,94,0.4); box-shadow: 0 0 6px rgba(34,197,94,0.25); }
+
+        @keyframes pFloat {
+            0%   { transform: translateY(100vh) rotate(0deg); opacity:0; }
+            8%   { opacity:0.8; }
+            92%  { opacity:0.5; }
+            100% { transform: translateY(-10vh) rotate(360deg); opacity:0; }
+        }
+
+        /* ═════ CONTAINER ═════ */
+        .container {
+            position: relative; z-index: 10;
+            width: 100%; max-width: 500px; padding: 20px;
+        }
+
+        /* ═════ CARD ═════ */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 48px 38px 40px;
+            backdrop-filter: blur(40px);
+            box-shadow:
+                0 0 80px rgba(0,212,255,0.03),
+                0 30px 60px rgba(0,0,0,0.6),
+                inset 0 1px 0 rgba(255,255,255,0.03);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -60%;
+            width: 220%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--accent), var(--primary), transparent);
+            animation: line 6s linear infinite;
+        }
+
+        @keyframes line { 0%{transform:translateX(-60%)} 100%{transform:translateX(60%)} }
+
+        /* ═════ PHASE: LOADING ═════ */
+        .phase { display: none; }
+        .phase.active { display: block; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1); }
+
+        @keyframes fadeUp {
+            from { opacity:0; transform:translateY(25px) scale(0.95); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+
+        .spinner-wrap { margin-bottom: 24px; }
+
+        .spinner {
+            width: 70px; height: 70px;
+            margin: 0 auto;
+            border: 3px solid rgba(0,212,255,0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .load-t { font-size: 17px; font-weight: 700; color: rgba(255,255,255,0.7); margin-bottom: 6px; }
+        .load-s { font-size: 12px; color: rgba(255,255,255,0.25); }
+
+        .prog { width: 100%; height: 4px; background: rgba(255,255,255,0.04); border-radius: 2px; margin-top: 20px; overflow: hidden; }
+        .prog-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 2px; transition: width 0.4s ease; }
+
+        /* ═════ PHASE: KEY ═════ */
+        .avatar-wrap { position: relative; display: inline-block; margin-bottom: 18px; }
+
+        .avatar-ring {
+            position: absolute; inset: -6px;
+            border-radius: 24px;
+            border: 2px solid transparent;
+            background: linear-gradient(135deg, var(--primary), var(--accent)) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: hue 4s linear infinite;
+        }
+
+        @keyframes hue { to { filter: hue-rotate(360deg); } }
+
+        .avatar {
+            width: 90px; height: 90px;
+            border-radius: 20px;
+            object-fit: cover;
+            display: block;
+            position: relative; z-index: 2;
+            box-shadow: 0 0 25px rgba(0,212,255,0.12);
+            animation: avFloat 3.5s ease-in-out infinite;
+        }
+
+        @keyframes avFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+
+        .badge {
+            position: absolute;
+            bottom: -4px; right: -4px;
+            width: 26px; height: 26px;
+            background: linear-gradient(135deg, var(--green), var(--green-d));
+            border-radius: 50%;
+            border: 3px solid #0a0a16;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; z-index: 3;
+            box-shadow: 0 2px 10px rgba(34,197,94,0.4);
+        }
+
+        .key-title {
+            font-size: 26px; font-weight: 900; margin-bottom: 4px;
+            background: linear-gradient(135deg, #00d4ff, #22d3ee, #a78bfa);
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shine 5s ease-in-out infinite;
+        }
+
+        @keyframes shine { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+
+        .key-sub { font-size: 13px; color: rgba(255,255,255,0.3); margin-bottom: 24px; }
+
+        /* Key display box */
+        .key-box {
+            background: rgba(0,212,255,0.04);
+            border: 2px dashed rgba(0,212,255,0.18);
+            border-radius: 18px;
+            padding: 22px 24px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .key-box:hover {
+            border-color: rgba(0,212,255,0.45);
+            background: rgba(0,212,255,0.06);
+            transform: scale(1.01);
+        }
+
+        .key-box:hover .hint { opacity: 1; }
+
+        .key-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px; font-weight: 700;
+            color: #22d3ee;
+            letter-spacing: 1.5px;
+            word-break: break-all;
+            line-height: 1.7;
+            user-select: all;
+        }
+
+        .hint {
+            position: absolute; top: 8px; right: 14px;
+            font-size: 10px; color: rgba(0,212,255,0.35);
+            opacity: 0; transition: opacity 0.3s;
+        }
+
+        /* Copy button */
+        .btn-copy {
+            width: 100%; padding: 17px;
+            background: linear-gradient(135deg, #0e7490, #0891b2, #06b6d4);
+            border: none; border-radius: 16px;
+            color: #fff; font-size: 16px; font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 5px 28px rgba(0,212,255,0.2);
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-copy::before {
+            content: '';
+            position: absolute; top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+            animation: btnShimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes btnShimmer { 0%{left:-100%} 50%{left:100%} 100%{left:100%} }
+
+        .btn-copy:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 40px rgba(0,212,255,0.3);
+        }
+
+        .btn-copy:active { transform: scale(0.97); }
+
+        /* Steps */
+        .steps {
+            text-align: left;
+            background: rgba(255,255,255,0.012);
+            border: 1px solid rgba(255,255,255,0.035);
+            border-radius: 16px;
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .step {
+            display: flex; align-items: flex-start; gap: 12px;
+            margin-bottom: 10px; font-size: 13px;
+            color: rgba(255,255,255,0.35); line-height: 1.5;
+        }
+
+        .step:last-child { margin-bottom: 0; }
+
+        .step b { color: rgba(255,255,255,0.5); }
+
+        .sn {
+            flex-shrink: 0; width: 24px; height: 24px;
+            background: rgba(0,212,255,0.08);
+            border: 1px solid rgba(0,212,255,0.12);
+            color: #22d3ee; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 800;
+        }
+
+        /* Timer */
+        .timer-box {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 18px;
+            background: rgba(0,212,255,0.04);
+            border: 1px solid rgba(0,212,255,0.08);
+            border-radius: 50px;
+            font-size: 12px; font-weight: 600;
+            color: rgba(0,212,255,0.5);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .timer-box i { font-size: 11px; }
+
+        /* ═════ PHASE: ERROR ═════ */
+        .err-icon { font-size: 56px; margin-bottom: 16px; }
+        .err-title { font-size: 22px; font-weight: 800; color: var(--red); margin-bottom: 6px; }
+        .err-sub { font-size: 13px; color: rgba(255,255,255,0.3); margin-bottom: 24px; line-height: 1.6; }
+
+        .btn-retry {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #5b21b6, #7c3aed);
+            border: none; border-radius: 14px;
+            color: #fff; font-size: 14px; font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer; text-decoration: none;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(124,58,237,0.25);
+        }
+
+        .btn-retry:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,58,237,0.35); }
+
+        /* Toast */
+        .toast {
+            position: fixed; top: 28px; left: 50%;
+            transform: translateX(-50%) translateY(-130px);
+            background: linear-gradient(135deg, #0e7490, #06b6d4);
+            color: #fff; padding: 13px 30px;
+            border-radius: 50px; font-weight: 700;
+            font-size: 14px; font-family: 'Inter', sans-serif;
+            box-shadow: 0 10px 40px rgba(0,212,255,0.4);
+            transition: transform 0.5s cubic-bezier(0.16,1,0.3,1);
+            z-index: 999;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 500px) {
+            .card { padding: 36px 22px 32px; border-radius: 22px; }
+            .key-title { font-size: 22px; }
+            .key-val { font-size: 14px; }
+            .btn-copy { font-size: 14px; }
+        }
+    </style>
 </head>
 <body>
 
-  <canvas id="matrix"></canvas>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="particles" id="particles"></div>
 
-  <div class="container">
-    <img src="https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg" 
-         alt="HAX4L Logo" 
-         class="logo-img">
-    
-    <h1 class="logo-text">HAX4L</h1>
-    <p class="tagline">PREMIUM KEY SYSTEM</p>
-    
-    <div class="steps">
-      <div class="step active" id="s1">⚡ Bước 1: Vào từ game (bấm LẤY KEY)</div>
-      <div class="step" id="s2">🔗 Bước 2: Vượt link4m (10 giây)</div>
-      <div class="step" id="s3">🎯 Bước 3: Copy key & dán vào game</div>
+<div class="toast" id="toast">
+    <i class="fas fa-check-circle"></i>
+    <span>Đã sao chép key!</span>
+</div>
+
+<div class="container">
+    <div class="card">
+
+        <!-- ═══ PHASE 1: LOADING ═══ -->
+        <div class="phase active" id="phaseLoad">
+            <div class="spinner-wrap"><div class="spinner"></div></div>
+            <div class="load-t" id="lt">Đang xác minh...</div>
+            <div class="load-s" id="ls">Kiểm tra phiên vượt link</div>
+            <div class="prog"><div class="prog-bar" id="pb"></div></div>
+        </div>
+
+        <!-- ═══ PHASE 2: KEY REVEAL ═══ -->
+        <div class="phase" id="phaseKey">
+            <div class="avatar-wrap">
+                <div class="avatar-ring"></div>
+                <img class="avatar"
+                     src="https://sf-static.upanhlaylink.com/img/image_20260323c38b17624ea7fdf1c5b129f6fffb837a.jpg"
+                     alt="Hax4L"
+                     onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2260%22 text-anchor=%22middle%22 fill=%22%2300d4ff%22 font-size=%2240%22 font-weight=%22bold%22 font-family=%22sans-serif%22>H4L</text></svg>'">
+                <div class="badge">✓</div>
+            </div>
+
+            <h1 class="key-title">Hax4L — Key của bạn</h1>
+            <p class="key-sub">Key duy nhất — sao chép và dán vào script trong game</p>
+
+            <div class="key-box" onclick="copyKey()">
+                <span class="key-val" id="keyVal">...</span>
+                <span class="hint"><i class="fas fa-copy"></i> Click copy</span>
+            </div>
+
+            <button class="btn-copy" onclick="copyKey()">
+                <i class="fas fa-copy" id="cpIco"></i>
+                <span id="cpTxt">Sao Chép Key</span>
+            </button>
+
+            <div class="steps">
+                <div class="step">
+                    <span class="sn">1</span>
+                    <span>Bấm <b>"Sao Chép Key"</b> ở trên</span>
+                </div>
+                <div class="step">
+                    <span class="sn">2</span>
+                    <span>Quay lại <b>Roblox</b> → dán key vào script</span>
+                </div>
+                <div class="step">
+                    <span class="sn">3</span>
+                    <span>Bấm <b>"Nhập Key"</b> → script tự động chạy</span>
+                </div>
+                <div class="step">
+                    <span class="sn">4</span>
+                    <span>🎮 Chơi game! Key <b>24h</b> & ghi nhớ thiết bị</span>
+                </div>
+            </div>
+
+            <div class="timer-box" id="timerBox">
+                <i class="fas fa-clock"></i>
+                <span id="timerText">Hết hạn: đang tính...</span>
+            </div>
+        </div>
+
+        <!-- ═══ PHASE 3: ERROR ═══ -->
+        <div class="phase" id="phaseErr">
+            <div class="err-icon">❌</div>
+            <div class="err-title">Không Tìm Thấy Key</div>
+            <div class="err-sub" id="errMsg">
+                Bạn cần vượt link từ script trong game để nhận key.<br>
+                Truy cập trực tiếp trang này sẽ không có key.
+            </div>
+            <a href="javascript:void(0)" class="btn-retry" onclick="window.close()">
+                <i class="fas fa-arrow-left"></i>
+                Quay lại Game
+            </a>
+        </div>
+
     </div>
-
-    <div class="key-box" id="keyBox">
-      ⚠️ VUI LÒNG VÀO TỪ GAME VÀ VƯỢT LINK
-    </div>
-
-    <button class="btn" id="copyBtn" onclick="copyKey()" style="display:none;">📋 COPY KEY</button>
-    <button class="btn discord" onclick="window.open('https://discord.gg/hax4l','_blank')">💬 DISCORD</button>
-
-    <div class="info">
-      ✅ <strong>Mỗi máy có key riêng - Không trùng lặp</strong><br>
-      ✅ <strong>Key tồn tại 24 giờ kể từ lúc vượt link</strong><br>
-      ✅ <strong>Reload trang vẫn giữ nguyên key</strong><br>
-      📌 Script loadstring:<br>
-      <code>loadstring(game:HttpGet("https://raw.githubusercontent.com/yourusername/Hax4L/main/script.lua"))()</code>
-      <div class="hwid-info" id="hwidInfo"></div>
-    </div>
-    
-    <div class="timer" id="timer" style="display:none;">
-      ⏰ Key còn: <span id="countdown">--:--:--</span>
-    </div>
-  </div>
-
-  <div class="notification" id="notification">✅ THÔNG BÁO</div>
+</div>
 
 <script>
-let currentKey = "";
-let keyExpireTime = 0;
-let userHWID = "";
-let countdownInterval = null;
+// ════════════════════════════════════════
+//  🔐 SECRET & DJB2 (giống hệt script.lua)
+// ════════════════════════════════════════
+const SECRET = 'HAX4L_PR1V4T3_S3CR3T_2025';
 
-// Matrix Rain Effect
-const canvas = document.getElementById('matrix');
-const ctx = canvas.getContext('2d');
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-
-const letters = 'HAX4L0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const fontSize = Math.max(10, Math.min(14, window.innerWidth / 80));
-const columns = Math.floor(canvas.width / fontSize);
-const drops = Array(columns).fill(1);
-
-function drawMatrix() {
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#0f0';
-  ctx.font = fontSize + 'px monospace';
-  
-  for (let i = 0; i < drops.length; i++) {
-    const text = letters[Math.floor(Math.random() * letters.length)];
-    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-    drops[i]++;
-  }
-}
-setInterval(drawMatrix, 35);
-
-// Generate Key từ HWID (mỗi máy 1 key duy nhất)
-function generateKeyFromHWID(hwid) {
-  const today = new Date().toISOString().split('T')[0];
-  const combined = hwid + today;
-  
-  let hash = 0;
-  for(let i = 0; i < combined.length; i++) {
-    hash = ((hash << 5) - hash) + combined.charCodeAt(i);
-    hash = hash & hash;
-  }
-  
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let key = "HAX4L-";
-  
-  let part1 = "";
-  for(let i = 0; i < 4; i++) {
-    const idx = Math.abs((hash + i * 7) % chars.length);
-    part1 += chars[idx];
-  }
-  
-  let part2 = "";
-  for(let i = 0; i < 4; i++) {
-    const idx = Math.abs((hash + i * 13) % chars.length);
-    part2 += chars[idx];
-  }
-  
-  let part3 = "";
-  const timestamp = Date.now();
-  for(let i = 0; i < 4; i++) {
-    const idx = Math.abs(((hash + timestamp) + i * 17) % chars.length);
-    part3 += chars[idx];
-  }
-  
-  key += part1 + "-" + part2 + "-" + part3;
-  return key;
+function djb2(s) {
+    let h = 5381;
+    for (let i = 0; i < s.length; i++)
+        h = (h * 33 + s.charCodeAt(i)) % 4294967296;
+    return h;
 }
 
-// Format time
-function formatTime(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+const hex8 = n => (n >>> 0).toString(16).toUpperCase().padStart(8, '0');
+
+// ════════════════════════════════════════
+//  ✅ VALIDATE KEY
+// ════════════════════════════════════════
+function validateKey(key) {
+    if (!key) return { ok: false, msg: 'Không có key' };
+    key = key.trim().toUpperCase();
+
+    const p = key.split('-');
+    if (p.length !== 4 || p[0] !== 'HAX4L')
+        return { ok: false, msg: 'Sai định dạng' };
+    if (p[1].length !== 8 || p[2].length !== 8 || p[3].length !== 8)
+        return { ok: false, msg: 'Sai độ dài' };
+
+    // Checksum
+    const expected = hex8(djb2(p[1] + p[2] + SECRET));
+    if (p[3] !== expected)
+        return { ok: false, msg: 'Key giả mạo' };
+
+    // Expiry 24h
+    const ts = parseInt(p[1], 16);
+    const now = Math.floor(Date.now() / 1000);
+    if (now - ts > 86400)
+        return { ok: false, msg: 'Key đã hết hạn' };
+    if (ts > now + 300)
+        return { ok: false, msg: 'Key không hợp lệ' };
+
+    const remain = 86400 - (now - ts);
+    return { ok: true, remain, ts };
 }
 
-// Update countdown
-function updateCountdown() {
-  const now = Math.floor(Date.now() / 1000);
-  const remaining = keyExpireTime - now;
-  
-  if (remaining <= 0) {
-    clearInterval(countdownInterval);
-    
-    localStorage.removeItem('HAX4L_CurrentKey_' + userHWID);
-    localStorage.removeItem('HAX4L_ExpireTime_' + userHWID);
-    
-    document.getElementById('keyBox').innerHTML = "⏰ KEY ĐÃ HẾT HẠN (24H)<br><small>Vui lòng vượt link mới từ game để lấy key mới</small>";
-    document.getElementById('keyBox').classList.add('expired');
-    document.getElementById('copyBtn').style.display = 'none';
-    document.getElementById('timer').style.display = 'none';
-    
-    document.getElementById('s1').classList.remove('completed');
-    document.getElementById('s1').classList.add('active');
-    document.getElementById('s2').classList.remove('completed');
-    document.getElementById('s3').classList.remove('completed','active');
-    
-    showNotification("⏰ Key đã hết hạn! Vui lòng vượt link mới");
-    
-    currentKey = "";
-    keyExpireTime = 0;
-    return;
-  }
-  
-  document.getElementById('countdown').textContent = formatTime(remaining);
-  
-  const timerElement = document.getElementById('timer');
-  timerElement.classList.remove('warning', 'danger');
-  
-  if (remaining <= 3600) timerElement.classList.add('warning');
-  if (remaining <= 600) {
-    timerElement.classList.remove('warning');
-    timerElement.classList.add('danger');
-  }
-}
-
-// Display Key
-function displayKey(key, expireTime, hwid) {
-  currentKey = key;
-  keyExpireTime = expireTime;
-  userHWID = hwid;
-  
-  const now = Math.floor(Date.now() / 1000);
-  const remaining = keyExpireTime - now;
-  
-  if (remaining <= 0) {
-    localStorage.removeItem('HAX4L_CurrentKey_' + hwid);
-    localStorage.removeItem('HAX4L_ExpireTime_' + hwid);
-    
-    document.getElementById('keyBox').innerHTML = "⏰ KEY ĐÃ HẾT HẠN<br><small>Vui lòng vượt link mới từ game</small>";
-    document.getElementById('keyBox').classList.add('expired');
-    showNotification("⏰ Key đã hết hạn!");
-    return;
-  }
-  
-  document.getElementById('keyBox').innerHTML = `<strong>${currentKey}</strong><br><small>Key riêng cho máy này - Reload vẫn giữ nguyên</small>`;
-  document.getElementById('keyBox').classList.remove('expired');
-  document.getElementById('copyBtn').style.display = 'inline-block';
-  document.getElementById('timer').style.display = 'block';
-  document.getElementById('hwidInfo').textContent = `ID Máy: ${hwid.substring(0, 12)}...`;
-  
-  document.getElementById('s1').classList.add('completed');
-  document.getElementById('s1').classList.remove('active');
-  document.getElementById('s2').classList.add('completed');
-  document.getElementById('s2').classList.remove('active');
-  document.getElementById('s3').classList.add('completed', 'active');
-  
-  if (countdownInterval) clearInterval(countdownInterval);
-  updateCountdown();
-  countdownInterval = setInterval(updateCountdown, 1000);
-}
-
-// Init
-window.addEventListener('DOMContentLoaded', function() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const verified = urlParams.get('verified');
-  const hwid = urlParams.get('hwid');
-  
-  if (verified === 'true' && hwid) {
-    // ĐÃ VƯỢT LINK + CÓ HWID
-    userHWID = hwid;
-    
-    const newKey = generateKeyFromHWID(hwid);
-    const newExpire = Math.floor(Date.now() / 1000) + (24 * 3600);
-    
-    localStorage.setItem('HAX4L_CurrentKey_' + hwid, newKey);
-    localStorage.setItem('HAX4L_ExpireTime_' + hwid, newExpire);
-    
-    displayKey(newKey, newExpire, hwid);
-    
-    showNotification("✅ Key riêng cho máy này! Hiệu lực 24h");
-    
-    setTimeout(() => copyKey(), 2000);
-    
-    window.history.replaceState({}, document.title, window.location.pathname);
-    
-  } else if (hwid) {
-    // CÓ HWID NHƯNG CHƯA VƯỢT LINK
-    userHWID = hwid;
-    const savedKey = localStorage.getItem('HAX4L_CurrentKey_' + hwid);
-    const savedExpire = localStorage.getItem('HAX4L_ExpireTime_' + hwid);
-    
-    if (savedKey && savedExpire) {
-      const expire = parseInt(savedExpire);
-      const now = Math.floor(Date.now() / 1000);
-      
-      if (expire > now) {
-        displayKey(savedKey, expire, hwid);
-        const remaining = expire - now;
-        showNotification("✅ Key của máy này còn: " + formatTime(remaining));
-      } else {
-        localStorage.removeItem('HAX4L_CurrentKey_' + hwid);
-        localStorage.removeItem('HAX4L_ExpireTime_' + hwid);
-        
-        document.getElementById('keyBox').innerHTML = "⏰ KEY ĐÃ HẾT HẠN<br><small>Vui lòng vượt link mới từ game</small>";
-        document.getElementById('keyBox').classList.add('expired');
-        showNotification("⏰ Key đã hết hạn! Vui lòng vượt link mới");
-      }
-    } else {
-      document.getElementById('keyBox').innerHTML = "⚠️ CHƯA CÓ KEY<br><small>Vui lòng vượt link từ game để lấy key</small>";
-      document.getElementById('hwidInfo').textContent = `ID Máy: ${hwid.substring(0, 12)}...`;
-    }
-  } else {
-    document.getElementById('keyBox').innerHTML = "⚠️ VUI LÒNG VÀO TỪ GAME<br><small>Mở Roblox → Chạy script → Bấm 'LẤY KEY'</small>";
-    showNotification("⚠️ Vui lòng lấy key từ trong game!");
-  }
-});
-
-// Copy Key
+// ════════════════════════════════════════
+//  📋 COPY KEY
+// ════════════════════════════════════════
 function copyKey() {
-  if (!currentKey) {
-    showNotification("❌ Chưa có key!");
-    return;
-  }
-  
-  const now = Math.floor(Date.now() / 1000);
-  if (keyExpireTime <= now) {
-    showNotification("⏰ Key đã hết hạn!");
-    return;
-  }
-  
-  navigator.clipboard.writeText(currentKey).then(() => {
-    const remaining = keyExpireTime - now;
-    showNotification("✅ Đã copy key! Còn: " + formatTime(remaining));
-  }).catch(() => {
-    const tempInput = document.createElement('input');
-    tempInput.value = currentKey;
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    document.execCommand('copy');
-    document.body.removeChild(tempInput);
-    showNotification("✅ Đã copy key!");
-  });
+    const k = document.getElementById('keyVal').innerText;
+    navigator.clipboard.writeText(k).then(showToast).catch(() => {
+        const t = document.createElement('textarea');
+        t.value = k;
+        t.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        document.body.removeChild(t);
+        showToast();
+    });
+    document.getElementById('cpIco').className = 'fas fa-check';
+    document.getElementById('cpTxt').textContent = 'Đã sao chép!';
+    setTimeout(() => {
+        document.getElementById('cpIco').className = 'fas fa-copy';
+        document.getElementById('cpTxt').textContent = 'Sao Chép Key';
+    }, 2500);
 }
 
-function showNotification(text) {
-  const notif = document.getElementById('notification');
-  notif.textContent = text;
-  notif.style.opacity = 1;
-  setTimeout(() => notif.style.opacity = 0, 5000);
+function showToast() {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
 }
+
+// ════════════════════════════════════════
+//  ⏱ COUNTDOWN TIMER
+// ════════════════════════════════════════
+function startTimer(remain) {
+    const el = document.getElementById('timerText');
+    function tick() {
+        if (remain <= 0) {
+            el.textContent = 'Key đã hết hạn!';
+            return;
+        }
+        const h = Math.floor(remain / 3600);
+        const m = Math.floor((remain % 3600) / 60);
+        const s = remain % 60;
+        el.textContent = `Hết hạn sau: ${h}h ${m}m ${s}s`;
+        remain--;
+        setTimeout(tick, 1000);
+    }
+    tick();
+}
+
+// ════════════════════════════════════════
+//  🔀 SWITCH PHASE
+// ════════════════════════════════════════
+function showPhase(id) {
+    document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════════
+//  🚀 MAIN: READ KEY → VALIDATE → SHOW
+// ════════════════════════════════════════
+(function main() {
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get('key');
+
+    // Loading animation
+    const steps = [
+        { t: 'Đang xác minh...', s: 'Kiểm tra phiên vượt link', p: 20 },
+        { t: 'Xác thực key...', s: 'Kiểm tra checksum + thời hạn', p: 50 },
+        { t: 'Kiểm tra bảo mật...', s: 'Mã hoá HWID binding', p: 80 },
+        { t: 'Hoàn tất!', s: 'Key đã sẵn sàng', p: 100 },
+    ];
+
+    let i = 0;
+    const iv = setInterval(() => {
+        if (i < steps.length) {
+            document.getElementById('lt').textContent = steps[i].t;
+            document.getElementById('ls').textContent = steps[i].s;
+            document.getElementById('pb').style.width = steps[i].p + '%';
+            i++;
+        }
+        if (i >= steps.length) {
+            clearInterval(iv);
+            setTimeout(() => {
+                if (!key) {
+                    document.getElementById('errMsg').innerHTML =
+                        'Bạn cần chạy <b>script trong game</b> và bấm <b>"Lấy Key"</b> để vượt link.<br>' +
+                        'Không thể truy cập trực tiếp trang này.';
+                    showPhase('phaseErr');
+                    return;
+                }
+
+                const result = validateKey(key);
+
+                if (result.ok) {
+                    document.getElementById('keyVal').textContent = key.toUpperCase();
+                    startTimer(result.remain);
+                    showPhase('phaseKey');
+                } else {
+                    document.getElementById('errMsg').innerHTML =
+                        `<b>${result.msg}</b><br>Quay lại game và bấm "Lấy Key" để nhận key mới.`;
+                    showPhase('phaseErr');
+                }
+            }, 500);
+        }
+    }, 700);
+})();
+
+// ════════════════════════════════════════
+//  ✨ PARTICLES
+// ════════════════════════════════════════
+(function () {
+    const c = document.getElementById('particles');
+    const cls = ['c1', 'c2', 'c3'];
+    for (let i = 0; i < 30; i++) {
+        const p = document.createElement('div');
+        const sz = Math.random() * 4 + 2;
+        p.className = 'p ' + cls[i % 3];
+        p.style.cssText = `left:${Math.random()*100}%;width:${sz}px;height:${sz}px;animation-duration:${Math.random()*20+14}s;animation-delay:${Math.random()*14}s;`;
+        c.appendChild(p);
+    }
+})();
 </script>
 </body>
 </html>
