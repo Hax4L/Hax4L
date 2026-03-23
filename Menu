@@ -18,7 +18,7 @@
 -- ════════════════════════════════════════
 local CONFIG = {
     -- 🔗 URL trang GitHub Pages (CHỈ 1 TRANG index.html)
-    CALLBACK_URL = "https://YOUR_USERNAME.github.io/Hax4L-KeySystem/index.html",
+    CALLBACK_URL = "https://hax4l.github.io/Hax4L/",
 
     -- 🔗 Link4m API token
     API_TOKEN    = "69bf87bdf47f6d1d8a4b60a3",
